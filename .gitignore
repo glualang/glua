@@ -1,0 +1,11 @@
+.idea
+*.iml
+.vscode
+/gluac.exe
+/build
+/dist
+/target
+/out
+/logs
+/*.log
+*~
