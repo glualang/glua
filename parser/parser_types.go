@@ -5,9 +5,10 @@ package parser
 type typeItemType int
 
 const (
-	simpleNameType typeItemType = 0
-	simpleRecordType typeItemType = 1
-	simpleFuncType typeItemType = 2
+	simpleNameType typeItemType = iota
+	simpleRecordType
+	simpleFuncType
+	simpleInnerType
 )
 
 type recordTypePropInfo struct {
@@ -28,23 +29,4 @@ type typeTreeItem struct {
 	aliasTypeParams []string
 
 	recordType *recordTypeInfo
-}
-
-type typeTree map[string]*typeTreeItem
-
-func (tree *typeTree) AddItem(item *typeTreeItem) {
-	(*tree)[item.name] = item
-}
-
-func (tree *typeTree) Contains(typeName string) bool {
-	_, ok := (*tree)[typeName]
-	return ok
-}
-
-func (tree *typeTree) IsRecordType(typeName string) bool {
-	info, ok := (*tree)[typeName]
-	if !ok {
-		return false
-	}
-	return info.itemType == simpleNameType || info.itemType == simpleRecordType // TODO: 暂时因为没有向上resolve，所以可能是simpleName/record类型
 }

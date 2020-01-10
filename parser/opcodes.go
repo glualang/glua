@@ -1,7 +1,5 @@
 package parser
 
-import "fmt"
-
 type opCode uint
 
 const (
@@ -203,29 +201,6 @@ func testTMode(m opCode) bool { return opModes[m]&(1<<7) != 0 }
 
 /* this bit 1 means constant (0 means register) */
 const BITRK = 1 << (SIZE_B - 1)
-
-func (p *Prototype) opArgToAsmItemString(op opCode, arg int, mode byte) string {
-	switch mode {
-	case opArgK:
-		constIdx := constantIndex(arg)
-		constVal := p.constants[constIdx]
-		constLiteral, ok := literalValueString(constVal)
-		if !ok {
-			return "invalid constant literal"
-		}
-		return fmt.Sprintf("const %s", constLiteral)
-	case opArgN: return "" // not used
-	case opArgU:
-		if op == opClosure {
-			subProto := p.prototypes[arg]
-			return fmt.Sprintf("%s", subProto.name)
-		}
-		return fmt.Sprintf("%%%d", arg)
-	case opArgR: return fmt.Sprintf("%%%d", arg) // TODO: upval or register?
-	default:
-		return "invalid"
-	}
-}
 
 // t means is-test-opcode
 var opModes []byte = []byte{

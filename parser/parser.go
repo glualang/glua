@@ -14,7 +14,7 @@ type parser struct {
 
 	nestedGoCallCount     int
 
-	globalTypes typeTree
+	typeChecker *TypeChecker
 }
 
 func (p *parser) checkCondition(c bool, message string) {
@@ -559,6 +559,9 @@ func (p *parser) parameterList() {
 }
 
 func (p *parser) body(isMethod bool, line int) exprDesc {
+	p.typeChecker.enterLevel()
+	defer p.typeChecker.leaveLevel()
+
 	p.function.OpenFunction(line)
 	p.checkNext('(')
 	if isMethod {
@@ -599,9 +602,10 @@ func (p *parser) localStatement() {
 	v := 0
 	for first := true; first || p.testNext(','); v++ {
 		varName := p.checkName()
+		varNameLine := p.lineNumber
 		if p.testNext(':') {
 			varType := p.checkType()
-			_ = varType
+			p.typeChecker.AddVariable(varName, varType, varNameLine)
 		}
 		p.function.MakeLocalVariable(varName)
 		first = false
@@ -744,12 +748,12 @@ func (p *parser) statement() {
 			}
 			log.Printf("= record {%a}\n", *recordInfo)
 			// record类型定义，除了要把新类型加入到parser类型系统外，还要创建构造函数的指令
-			p.globalTypes.AddItem(&typeTreeItem{
+			p.typeChecker.AddGlobalType(typeNameToken, &typeTreeItem{
 				itemType: simpleRecordType,
 				name: typeNameToken,
 				genericTypeParams: typeGenericNameList,
 				recordType:recordInfo,
-			})
+			}, line)
 			// TODO: 提前创建局部变量，否则会变成全局变量
 			p.function.MakeLocalVariable(typeNameToken)
 			p.function.AdjustLocalVariables(1)
@@ -768,14 +772,14 @@ func (p *parser) statement() {
 			}
 			log.Printf("= %s<%a>\n", rightTypeName, rightTypeNameList)
 			// 类型重命名除了把新类型加入到parser的namespace中，如果右侧是record类型，还要创建新的构造函数
-			p.globalTypes.AddItem(&typeTreeItem{
+			p.typeChecker.AddGlobalType(typeNameToken, &typeTreeItem{
 				itemType: simpleNameType,
 				name: typeNameToken,
 				genericTypeParams: typeGenericNameList,
 				aliasTypeName: rightTypeName,
 				aliasTypeParams: rightTypeNameList,
-			})
-			if p.globalTypes.Contains(rightTypeName) && p.globalTypes.IsRecordType(rightTypeName) {
+			}, line)
+			if p.typeChecker.Contains(rightTypeName) && p.typeChecker.IsRecordType(rightTypeName) {
 				// type alias右侧是record类型，则新类型需要有构造函数
 				// 创建新的构造函数并把新创建的构造函数赋值给上面的新局部变量
 				// TODO: 提前创建局部变量，否则会变成全局变量
@@ -810,7 +814,7 @@ func (p *parser) mainFunction() {
 func ParseToPrototype(r io.ByteReader, name string) *Prototype {
 	p := &parser{
 		scanner: scanner{r: r, lineNumber: 1, lastLine: 1, lookAheadToken: token{t: tkEOS}, source: name},
-		globalTypes: make(typeTree),
+		typeChecker: NewTypeChecker(),
 	}
 	f := &function{f: &Prototype{source: name, maxStackSize: 2, isVarArg: true, extra:NewPrototypeExtra(), name: "main"}, constantLookup: make(map[value]int), p: p, jumpPC: noJump}
 	p.function = f
