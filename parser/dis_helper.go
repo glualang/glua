@@ -1,5 +1,39 @@
 package parser
 
+import (
+	"errors"
+	"strconv"
+)
+
+func (p *Prototype) preParseLabelLocations() (err error) {
+	extra := p.extra
+	var ins instruction
+	var operand int
+	var jmpDest int
+	for i:=0;i<len(p.code);i++ {
+		ins = p.code[i]
+		opcode := ins.opCode()
+		if int(opcode) >= int(NUM_OPCODES) {
+			return errors.New("unknown opcode " + strconv.Itoa(int(opcode)))
+		}
+		count := Opcounts[opcode]
+		info := Opinfos[opcode]
+
+		for j:=0;j<count;j++ {
+			if info[j].limit == LIMIT_LOCATION {
+				operand = ins.sbx()
+				jmpDest = operand + 1 + i
+				if (jmpDest >= len(p.code)) || (jmpDest < 0) {
+					return errors.New("jmp dest exceed")
+				}
+				insLabel := p.name + "_to_dest_br_" + strconv.Itoa(jmpDest)
+				extra.labelLocations[jmpDest] = insLabel
+			}
+		}
+	}
+	return
+}
+
 // TODO
 //
 //func PreParseInstructionLocation(pf *Prototype) (bool, string, map[int]string) {

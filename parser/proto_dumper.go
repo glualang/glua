@@ -68,13 +68,11 @@ func (p *Prototype) ToFuncAsm(outfile *os.File, isTop bool) (err error) {
 	outfile.WriteString(".end_local\r\n")
 
 	//pre parse location  ----------------------------------------
-	// TODO: 把指令索引对应的label抽取出来
-	//res, preParseInstLocErr, locationinfos := PreParseInstructionLocation(p)
-	//if !res {
-	//	err = errors.New(preParseInstLocErr)
-	//	return
-	//}
-	locationinfos := make(map[int]string) // line -> label mapping
+	err = p.preParseLabelLocations()
+	if err != nil {
+		return
+	}
+	locationinfos := p.extra.labelLocations // line -> label mapping
 
 	//write code  ---------------------------------------------
 	outfile.WriteString(".begin_code\r\n")
@@ -94,7 +92,7 @@ func (p *Prototype) ToFuncAsm(outfile *os.File, isTop bool) (err error) {
 		//	err = errors.New(parseInstErr)
 		//	return
 		//}
-		insstr := instruction.String(p)
+		insstr := instruction.String(p, i)
 		extraArg := false
 		useExtended := false
 

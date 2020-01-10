@@ -68,6 +68,17 @@ type upValueDesc struct {
 	index   int
 }
 
+// prototype extra info for compile
+type PrototypeExtra struct {
+	labelLocations map[int]string // label locations, code index => label
+}
+
+func NewPrototypeExtra() *PrototypeExtra {
+	return &PrototypeExtra{
+		labelLocations: make(map[int]string),
+	}
+}
+
 type Prototype struct {
 	constants                    []value
 	code                         []instruction
@@ -80,6 +91,8 @@ type Prototype struct {
 	parameterCount, maxStackSize int
 	isVarArg                     bool
 	name                         string
+
+	extra *PrototypeExtra
 }
 
 func (p *Prototype) upValueName(index int) string {

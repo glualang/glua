@@ -117,6 +117,7 @@ func (f *function) OpenFunction(line int) {
 		maxStackSize: 2,
 		lineDefined: line,
 		name: genPrototypeName(),
+		extra: NewPrototypeExtra(),
 	})
 	f.p.function = &function{f: &f.f.prototypes[len(f.f.prototypes)-1], constantLookup: make(map[value]int), previous: f, p: f.p, jumpPC: noJump, firstLocal: len(f.p.activeVariables)}
 	f.p.function.EnterBlock(false)

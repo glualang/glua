@@ -798,11 +798,9 @@ func ParseToPrototype(r io.ByteReader, name string) *Prototype {
 		scanner: scanner{r: r, lineNumber: 1, lastLine: 1, lookAheadToken: token{t: tkEOS}, source: name},
 		globalTypes: make(typeTree),
 	}
-	f := &function{f: &Prototype{source: name, maxStackSize: 2, isVarArg: true}, constantLookup: make(map[value]int), p: p, jumpPC: noJump}
+	f := &function{f: &Prototype{source: name, maxStackSize: 2, isVarArg: true, extra:NewPrototypeExtra(), name: "main"}, constantLookup: make(map[value]int), p: p, jumpPC: noJump}
 	p.function = f
 	p.mainFunction()
-
-	f.f.name = "main" // top proto is entrypoint
 
 	return f.f
 }
