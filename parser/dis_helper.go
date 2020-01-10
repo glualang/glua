@@ -26,7 +26,7 @@ func (p *Prototype) preParseLabelLocations() (err error) {
 				if (jmpDest >= len(p.code)) || (jmpDest < 0) {
 					return errors.New("jmp dest exceed")
 				}
-				insLabel := p.name + "_to_dest_br_" + strconv.Itoa(jmpDest)
+				insLabel := "label_" + strconv.Itoa(jmpDest)
 				extra.labelLocations[jmpDest] = insLabel
 			}
 		}

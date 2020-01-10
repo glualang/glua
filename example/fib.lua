@@ -33,6 +33,6 @@ function fibl (n)
 	return n1
 end
 
-print(fib(20))
-print(fibr(0, 1, 20))
-print(fibl(20))
+print('fib(20)', fib(20))
+print('fibr(0, 1, 20)', fibr(0, 1, 20))
+print('fibl(20)', fibl(20))

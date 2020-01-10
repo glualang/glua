@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -66,69 +66,75 @@ func (i instruction) String(proto *Prototype, indexInProtoCode int) string {
 	opName := opNames[op]
 	opName = strings.ToLower(opName)
 	s := opName
-	// TODO: use opcounts and OpInfos to dump to asm
-	switch opMode(op) {
-	case iABC:
-		s = fmt.Sprintf("%s %%%d", s, i.a())
-		// TODO: 这里有BUG，比如settabup，settabup %0 @256 const "Person1" 其中%0应该是 第二项@0代币_ENV，@256应该是第3项const ...，最后const "Person1"应该是%0
-		if bMode(op) != opArgN {
-			if cMode(op) == opArgN {
-				// c不存在时
-				s = fmt.Sprintf("%s %s", s, proto.opArgToAsmItemString(op, i.b(), bMode(op)))
-			} else {
-				// c存在时b按register/upvalue处理，而不作为常量
-				if op == opGetUpValue || op == opSetUpValue || op == opGetTableUp || op == opSetTableUp {
-					s = fmt.Sprintf("%s @%d", s, i.b())
-				} else if bMode(op) == opArgU {
-					s = fmt.Sprintf("%s %%%d", s, i.b())
-				}
+
+	opCount := Opcounts[op]
+	opInfo := Opinfos[op]
+	var operand int
+	var useExtended bool = false
+	//var extraArg bool = false
+	for j:=0;j<opCount;j++ {
+		limit := opInfo[j].limit
+		switch opInfo[j].pos {
+		case OPP_A:
+			operand = i.a()
+		case OPP_B:
+			operand = i.b()
+		case OPP_C:
+			operand = i.c()
+		case OPP_Bx:
+			operand = i.bx()
+		case OPP_Ax:
+			operand = i.ax()
+		case OPP_sBx:
+			operand = i.sbx()
+		case OPP_ARG:
+			useExtended = true
+		case OPP_C_ARG:
+			operand = i.c()
+			if operand == 0 {
+				useExtended = true //try get next
 			}
 		}
-		if cMode(op) != opArgN {
-			s = fmt.Sprintf("%s %s", s, proto.opArgToAsmItemString(op, i.c(), cMode(op)))
+		if useExtended { //try get next ins
+			return "" // TODO
 		}
 
-		// TODO: 这里不应该这么硬编码
-		switch op {
-		case opSetTableUp:
-			s = fmt.Sprintf("%s %%%d @%d %s", opName, i.a(), i.c(), proto.opArgToAsmItemString(op, i.b(), bMode(op)))
-		case opSetTable:
-			s = fmt.Sprintf("%s %%%d %s %s", opName, i.a(), proto.opArgToAsmItemString(op, i.b(), bMode(op)), proto.opArgToAsmItemString(op, i.c(), cMode(op)))
-		case opNewTable:
-			s = fmt.Sprintf("%s %%%d %d %d", opName, i.a(), i.b(), i.c())
-		case opCall:
-			s = fmt.Sprintf("%s %%%d %d %d", opName, i.a(), i.b(), i.c())
-		case opReturn:
-			s = fmt.Sprintf("%s %%%d %d", opName, i.a(), i.b())
-		case opTest:
-			s = fmt.Sprintf("%s %%%d %d", opName, i.a(), i.b())
-		}
-
-
-	case iAsBx:
-		s = fmt.Sprintf("%s %%%d", s, i.a())
-		if bMode(op) != opArgN {
-			s = fmt.Sprintf("%s %d", s, i.sbx())
-		}
-		switch op {
-		case opJump:
-			// TODO: jmp 1 $labelName 这种格式，需要在proto中找到i.sbx() + i所在行数对应的location的label name
-			instOffset := i.sbx()
-			jmpDest := instOffset + 1 + indexInProtoCode
-			label, ok := proto.extra.labelLocations[jmpDest]
+		switch limit {
+		case LIMIT_STACKIDX:
+			s = s + " %" + strconv.Itoa(int(operand))
+		case LIMIT_UPVALUE:
+			s = s + " @" + strconv.Itoa(int(operand))
+		case LIMIT_EMBED:
+			s = s + " " + strconv.Itoa(int(operand))
+		case LIMIT_CONSTANT:
+			constIdx := constantIndex(operand)
+			constVal := proto.constants[constIdx]
+			constLiteral, ok := literalValueString(constVal)
 			if !ok {
-				s = fmt.Sprintf("%s invalid_location", opName)
-				return s
+				return "invalid constant literal"
 			}
-			s = fmt.Sprintf("%s %d $%s", opName, i.a(), label)
+			s = s + " const " + constLiteral
+		case LIMIT_LOCATION:
+			loclabel := proto.extra.labelLocations[int(operand)+1+indexInProtoCode]
+			s = s + " $" + loclabel
+		case LIMIT_CONST_STACK:
+			if (int(operand) & BITRK) > 0 {
+				cconstIdx := constantIndex(operand)
+				constVal := proto.constants[cconstIdx]
+				constLiteral, ok := literalValueString(constVal)
+				if !ok {
+					return "invalid constant literal"
+				}
+				s = s + " const " + constLiteral
+			} else {
+				s = s + " %" + strconv.Itoa(int(operand))
+			}
+
+		case LIMIT_PROTO:
+			subProto := proto.prototypes[operand]
+			s = s + " " + subProto.name
 		}
-	case iABx:
-		s = fmt.Sprintf("%s %%%d", s, i.a())
-		if bMode(op) != opArgN {
-			s = fmt.Sprintf("%s %s", s, proto.opArgToAsmItemString(op, i.bx(), bMode(op)))
-		}
-	case iAx:
-		s = fmt.Sprintf("%s %%%d", s, i.ax())
 	}
+
 	return s
 }

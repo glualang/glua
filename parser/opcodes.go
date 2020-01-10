@@ -11,6 +11,26 @@ const (
 	iAx
 )
 
+/*
+** size and position of opcode arguments.
+ */
+const (
+	SIZE_C  = 9
+	SIZE_B  = 9
+	SIZE_Bx = (SIZE_C + SIZE_B)
+	SIZE_A  = 8
+	SIZE_Ax = (SIZE_C + SIZE_B + SIZE_A)
+
+	SIZE_OP = 6
+
+	POS_OP = 0
+	POS_A  = (POS_OP + SIZE_OP)
+	POS_C  = (POS_A + SIZE_A)
+	POS_B  = (POS_C + SIZE_C)
+	POS_Bx = POS_C
+	POS_Ax = POS_A
+)
+
 const (
 	opMove opCode = iota
 	opLoadConstant
@@ -177,6 +197,9 @@ func bMode(m opCode) byte     { return (opModes[m] >> 4) & 3 }
 func cMode(m opCode) byte     { return (opModes[m] >> 2) & 3 }
 func testAMode(m opCode) bool { return opModes[m]&(1<<6) != 0 }
 func testTMode(m opCode) bool { return opModes[m]&(1<<7) != 0 }
+
+/* this bit 1 means constant (0 means register) */
+const BITRK = 1 << (SIZE_B - 1)
 
 func (p *Prototype) opArgToAsmItemString(op opCode, arg int, mode byte) string {
 	switch mode {
