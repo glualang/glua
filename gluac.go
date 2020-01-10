@@ -9,7 +9,7 @@ import (
 )
 
 func main()  {
-	filename := "example/record.lua"
+	filename := "example/record.lua" // TODO: read from command line args
 	f, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)

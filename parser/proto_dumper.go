@@ -86,20 +86,16 @@ func (p *Prototype) ToFuncAsm(outfile *os.File, isTop bool) (err error) {
 
 		instruction := p.code[i]
 
-		// TODO: 把instruction转成字符串，注意有的指令可能有占位符（跳转到label)的
-		//res, parseInstErr, insstr, useExtended, extraArg := ParseInstruction(p, i, instruction, locationinfos)
-		//if !res {
-		//	err = errors.New(parseInstErr)
-		//	return
-		//}
-		insstr := instruction.String(p, i)
-		extraArg := false
-		useExtended := false
+		insParseAsmEr, insStr, useExtended, extraArg := p.ParseInstructionToAsmLine(instruction, i)
+		if insParseAsmEr != nil {
+			err = insParseAsmEr
+			return
+		}
 
 		if extraArg {
-			outfile.WriteString(insstr)
+			outfile.WriteString(insStr)
 		} else {
-			outfile.WriteString("\t" + insstr)
+			outfile.WriteString("\t" + insStr)
 		}
 
 		if !useExtended {

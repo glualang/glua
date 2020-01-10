@@ -1,10 +1,5 @@
 package parser
 
-import (
-	"strconv"
-	"strings"
-)
-
 type instruction uint32
 
 func isConstant(x int) bool   { return 0 != x&bitRK }
@@ -60,81 +55,3 @@ func createABx(op opCode, a, bx int) instruction {
 }
 
 func createAx(op opCode, a int) instruction { return instruction(op)<<posOp | instruction(a)<<posAx }
-
-func (i instruction) String(proto *Prototype, indexInProtoCode int) string {
-	op := i.opCode()
-	opName := opNames[op]
-	opName = strings.ToLower(opName)
-	s := opName
-
-	opCount := Opcounts[op]
-	opInfo := Opinfos[op]
-	var operand int
-	var useExtended bool = false
-	//var extraArg bool = false
-	for j:=0;j<opCount;j++ {
-		limit := opInfo[j].limit
-		switch opInfo[j].pos {
-		case OPP_A:
-			operand = i.a()
-		case OPP_B:
-			operand = i.b()
-		case OPP_C:
-			operand = i.c()
-		case OPP_Bx:
-			operand = i.bx()
-		case OPP_Ax:
-			operand = i.ax()
-		case OPP_sBx:
-			operand = i.sbx()
-		case OPP_ARG:
-			useExtended = true
-		case OPP_C_ARG:
-			operand = i.c()
-			if operand == 0 {
-				useExtended = true //try get next
-			}
-		}
-		if useExtended { //try get next ins
-			return "" // TODO
-		}
-
-		switch limit {
-		case LIMIT_STACKIDX:
-			s = s + " %" + strconv.Itoa(int(operand))
-		case LIMIT_UPVALUE:
-			s = s + " @" + strconv.Itoa(int(operand))
-		case LIMIT_EMBED:
-			s = s + " " + strconv.Itoa(int(operand))
-		case LIMIT_CONSTANT:
-			constIdx := constantIndex(operand)
-			constVal := proto.constants[constIdx]
-			constLiteral, ok := literalValueString(constVal)
-			if !ok {
-				return "invalid constant literal"
-			}
-			s = s + " const " + constLiteral
-		case LIMIT_LOCATION:
-			loclabel := proto.extra.labelLocations[int(operand)+1+indexInProtoCode]
-			s = s + " $" + loclabel
-		case LIMIT_CONST_STACK:
-			if (int(operand) & BITRK) > 0 {
-				cconstIdx := constantIndex(operand)
-				constVal := proto.constants[cconstIdx]
-				constLiteral, ok := literalValueString(constVal)
-				if !ok {
-					return "invalid constant literal"
-				}
-				s = s + " const " + constLiteral
-			} else {
-				s = s + " %" + strconv.Itoa(int(operand))
-			}
-
-		case LIMIT_PROTO:
-			subProto := proto.prototypes[operand]
-			s = s + " " + subProto.name
-		}
-	}
-
-	return s
-}
