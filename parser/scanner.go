@@ -49,6 +49,11 @@ const (
 	tkLE
 	tkNE
 	tkDoubleColon
+
+	tkIdiv
+	tkShl
+	tkShr
+
 	tkEOS
 	tkNumber
 	tkName
@@ -67,7 +72,7 @@ var tokens []string = []string{
 
 	"nil", "not", "or", "repeat",
 	"return", "then", "true", "until", "while",
-	"..", "...", "==", ">=", "<=", "~=", "::", "<eof>",
+	"..", "...", "==", ">=", "<=", "~=", "::", "//", "<eof>",
 	"<number>", "<name>", "<string>",
 }
 
@@ -455,17 +460,33 @@ func (s *scanner) scan() token {
 			s.advance()
 			return token{t: tkEq}
 		case '<':
-			if s.advance(); s.current != '=' {
-				return token{t: '<'}
+			s.advance()
+			if s.current == '=' {
+				s.advance()
+				return token{t: tkLE}
+			}
+			if s.current == '<' {
+				s.advance()
+				return token{t: tkShl}
+			}
+			return token{t: '<'}
+		case '/':
+			if s.advance(); s.current != '/' {
+				return token{t: '/'}
 			}
 			s.advance()
-			return token{t: tkLE}
+			return token{t: tkIdiv}
 		case '>':
-			if s.advance(); s.current != '=' {
-				return token{t: '>'}
-			}
 			s.advance()
-			return token{t: tkGE}
+			if s.current == '=' {
+				s.advance()
+				return token{t: tkGE}
+			}
+			if s.current == '>' {
+				s.advance()
+				return token{t: tkShr}
+			}
+			return token{t: '>'}
 		case '~':
 			if s.advance(); s.current != '=' {
 				return token{t: '~'}

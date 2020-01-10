@@ -209,6 +209,8 @@ func unaryOp(op rune) int {
 		return oprMinus
 	case '#':
 		return oprLength
+	case '~':
+		return oprBnot
 	}
 	return oprNoUnary
 }
@@ -239,12 +241,24 @@ func binaryOp(op rune) int {
 		return oprLE
 	case '>':
 		return oprGT
+	case '&':
+		return oprBand
+	case '|':
+		return oprBor
+	case '~':
+		return oprBxor
 	case tkGE:
 		return oprGE
 	case tkAnd:
 		return oprAnd
 	case tkOr:
 		return oprOr
+	case tkIdiv:
+		return oprIdiv
+	case tkShl:
+		return oprShl
+	case tkShr:
+		return oprShr
 	}
 	return oprNoBinary
 }

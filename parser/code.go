@@ -9,6 +9,8 @@ const (
 	oprMinus = iota
 	oprNot
 	oprLength
+	oprBnot
+
 	oprNoUnary
 )
 
@@ -19,12 +21,21 @@ const (
 )
 
 const (
+	// 需要和opcodes中相对顺序一致，因为用到了int(opr - oprAdd)的偏移量
 	oprAdd = iota
 	oprSub
 	oprMul
-	oprDiv
 	oprMod
 	oprPow
+	oprDiv
+	oprIdiv
+
+	oprBand
+	oprBor
+	oprBxor
+	oprShl
+	oprShr
+
 	oprConcat
 	oprEq
 	oprLT
@@ -821,7 +832,7 @@ func (f *function) GoIfFalse(e exprDesc) exprDesc {
 	return e
 }
 
-func (f *function) encodeNot(e exprDesc) exprDesc {
+func (f *function) encodeLikeNot(e exprDesc, op opCode) exprDesc {
 	switch e = f.DischargeVariables(e); e.kind {
 	case kindNil, kindFalse:
 		e.kind = kindTrue
@@ -832,7 +843,7 @@ func (f *function) encodeNot(e exprDesc) exprDesc {
 	case kindRelocatable, kindNonRelocatable:
 		e = f.dischargeToAnyRegister(e)
 		f.freeExpression(e)
-		e.info, e.kind = f.EncodeABC(opNot, 0, e.info, 0), kindRelocatable
+		e.info, e.kind = f.EncodeABC(op, 0, e.info, 0), kindRelocatable
 	default:
 		f.unreachable()
 	}
@@ -840,6 +851,14 @@ func (f *function) encodeNot(e exprDesc) exprDesc {
 	f.removeValues(e.f)
 	f.removeValues(e.t)
 	return e
+}
+
+func (f *function) encodeNot(e exprDesc) exprDesc {
+	return f.encodeLikeNot(e, opNot)
+}
+
+func (f *function) encodeBnot(e exprDesc) exprDesc {
+	return f.encodeLikeNot(e, opBnot)
 }
 
 func (f *function) Indexed(t, k exprDesc) (r exprDesc) {
@@ -859,7 +878,7 @@ func (f *function) Indexed(t, k exprDesc) (r exprDesc) {
 func foldConstants(op opCode, e1, e2 exprDesc) (exprDesc, bool) {
 	if !e1.isNumeral() || !e2.isNumeral() {
 		return e1, false
-	} else if (op == opDiv || op == opMod) && e2.value == 0.0 {
+	} else if (op == opDiv || op == opIDiv || op == opMod) && e2.value == 0.0 {
 		return e1, false
 	}
 	e1.value = arith(Operator(op-opAdd)+OpAdd, e1.value, e2.value)
@@ -899,6 +918,8 @@ func (f *function) Prefix(op int, e exprDesc, line int) exprDesc {
 		return f.encodeNot(e)
 	case oprLength:
 		return f.encodeArithmetic(opLength, f.ExpressionToAnyRegister(e), makeExpression(kindNumber, 0), line)
+	case oprBnot:
+		return f.encodeBnot(e)
 	}
 	panic("unreachable")
 }
@@ -952,7 +973,7 @@ func (f *function) Postfix(op int, e1, e2 exprDesc, line int) exprDesc {
 			return makeExpression(kindRelocatable, e2.info)
 		}
 		return f.encodeArithmetic(opConcat, e1, f.ExpressionToNextRegister(e2), line)
-	case oprAdd, oprSub, oprMul, oprDiv, oprMod, oprPow:
+	case oprAdd, oprSub, oprMul, oprDiv, oprIdiv, oprMod, oprPow, oprBand, oprBor, oprBxor, oprShl, oprShr:
 		return f.encodeArithmetic(opCode(op-oprAdd)+opAdd, e1, e2, line)
 	case oprEq, oprLT, oprLE:
 		return f.encodeComparison(opCode(op-oprEq)+opEqual, 1, e1, e2)

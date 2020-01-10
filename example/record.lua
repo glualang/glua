@@ -17,3 +17,12 @@ local c: Person2 = Person2({})
 c.name = 'person2[c]'
 
 print('a', a, 'b', b, 'c', c)
+
+print('a'..'b')
+print('3//2=', 3//2)
+print('3 & 2=', 3&2)
+print('3 | 2=', 3|2)
+print('3 ~ 2=', 3 ~ 2)
+print('~3=', ~a)
+print('1<<2=', 1 << 2)
+print('7>>2=', 7 >> 2)
