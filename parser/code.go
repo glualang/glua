@@ -151,9 +151,9 @@ func (f *function) EnterBlock(isLoop bool) {
 
 func (f *function) undefinedGotoError(g label) {
 	if isReserved(g.name) {
-		f.semanticError(fmt.Sprintf("<%s> at line %d not inside a loop", g.name, g.line))
+		f.semanticError(fmt.Sprintf("<%s> at Line %d not inside a loop", g.name, g.line))
 	} else {
-		f.semanticError(fmt.Sprintf("no visible label '%s' for <goto> at line %d", g.name, g.line))
+		f.semanticError(fmt.Sprintf("no visible label '%s' for <goto> at Line %d", g.name, g.line))
 	}
 }
 
@@ -196,7 +196,7 @@ func (f *function) MakeLabel(name string, line int) int {
 func (f *function) closeGoto(i int, l label) {
 	g := f.p.pendingGotos[i]
 	if f.assert(g.name == l.name); g.activeVariableCount < l.activeVariableCount {
-		f.semanticError(fmt.Sprintf("<goto %s> at line %d jumps into the scope of local '%s'", g.name, g.line, f.LocalVariable(g.activeVariableCount).name))
+		f.semanticError(fmt.Sprintf("<goto %s> at Line %d jumps into the scope of local '%s'", g.name, g.line, f.LocalVariable(g.activeVariableCount).name))
 	}
 	f.PatchList(g.pc, l.pc)
 	copy(f.p.pendingGotos[i:], f.p.pendingGotos[i+1:])
@@ -220,7 +220,7 @@ func (f *function) findLabel(i int) int {
 func (f *function) CheckRepeatedLabel(name string) {
 	for _, l := range f.p.activeLabels[f.block.firstLabel:] {
 		if l.name == name {
-			f.semanticError(fmt.Sprintf("label '%s' already defined on line %d", name, l.line))
+			f.semanticError(fmt.Sprintf("label '%s' already defined on Line %d", name, l.line))
 		}
 	}
 }

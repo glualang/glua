@@ -11,7 +11,7 @@ func chunkID(source string) string {
 			return source[1:]
 		}
 		return source[1:idSize]
-	case '@': // file name
+	case '@': // file Name
 		if len(source) <= idSize {
 			return source[1:]
 		}

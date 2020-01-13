@@ -72,7 +72,7 @@ func (p *Prototype) ToFuncAsm(outfile *os.File, isTop bool) (err error) {
 	if err != nil {
 		return
 	}
-	locationinfos := p.extra.labelLocations // line -> label mapping
+	locationinfos := p.extra.labelLocations // Line -> label mapping
 
 	//write code  ---------------------------------------------
 	outfile.WriteString(".begin_code\r\n")

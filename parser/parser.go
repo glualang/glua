@@ -34,7 +34,7 @@ func (p *parser) checkLimit(val, limit int, what string) {
 	if val > limit {
 		where := "main function"
 		if line := p.function.f.lineDefined; line != 0 {
-			where = fmt.Sprintf("function at line %d", line)
+			where = fmt.Sprintf("function at Line %d", line)
 		}
 		p.syntaxError(fmt.Sprintf("too many %s (limit is %d) in %s", what, limit, where))
 	}
@@ -526,7 +526,7 @@ func (p *parser) labelStatement(label string, line int) {
 }
 
 func (p *parser) nameList() []string {
-	// parse name {,name}
+	// parse Name {,Name}
 	names := make([]string, 0)
 	names = append(names, p.checkName())
 	for p.testNext(',') {
@@ -535,33 +535,33 @@ func (p *parser) nameList() []string {
 	return names
 }
 
-func (p *parser) checkParameterList() (result []*funcTypeParamInfo) {
+func (p *parser) checkParameterList() (result []*FuncTypeParamInfo) {
 	isVarArg := false
 	if p.t != ')' {
 		for first := true; first || (!isVarArg && p.testNext(',')); first = false {
 			switch p.t {
 			case tkName:
 				paramName := p.checkName()
-				var paramType *typeTreeItem
+				var paramType *TypeTreeItem
 				if p.testNext(':') {
 					// 可选的 : type
 					paramType = p.checkType()
 				} else {
 					paramType = objectTypeTreeItem
 				}
-				result = append(result, &funcTypeParamInfo{
-					name: paramName,
-					typeInfo: paramType,
-					isDynamicParams: false,
+				result = append(result, &FuncTypeParamInfo{
+					Name:            paramName,
+					TypeInfo:        paramType,
+					IsDynamicParams: false,
 				})
 			case tkDots:
 				p.next()
 				isVarArg = true
-				result = append(result, &funcTypeParamInfo{
-					isDynamicParams: true,
+				result = append(result, &FuncTypeParamInfo{
+					IsDynamicParams: true,
 				})
 			default:
-				p.syntaxError("<name> or '...' expected")
+				p.syntaxError("<Name> or '...' expected")
 			}
 		}
 	}
@@ -577,7 +577,7 @@ func (p *parser) parameterList() {
 				paramName := p.checkName()
 				p.function.MakeLocalVariable(paramName)
 				n++
-				var paramType *typeTreeItem
+				var paramType *TypeTreeItem
 				if p.testNext(':') {
 					// 可选的 : type
 					paramType = p.checkType()
@@ -589,7 +589,7 @@ func (p *parser) parameterList() {
 				p.next()
 				isVarArg = true
 			default:
-				p.syntaxError("<name> or '...' expected")
+				p.syntaxError("<Name> or '...' expected")
 			}
 		}
 	}
@@ -601,8 +601,10 @@ func (p *parser) parameterList() {
 }
 
 func (p *parser) body(isMethod bool, line int) exprDesc {
-	p.typeChecker.enterLevel()
-	defer p.typeChecker.leaveLevel()
+	p.typeChecker.enterLevel(p.lineNumber)
+	defer func() {
+		p.typeChecker.leaveLevel(p.lineNumber)
+	}()
 
 	p.function.OpenFunction(line)
 	p.checkNext('(')
@@ -680,7 +682,7 @@ func (p *parser) returnStatement() {
 	p.testNext(';')
 }
 
-func (p *parser) checkType() *typeTreeItem {
+func (p *parser) checkType() *TypeTreeItem {
 	// 类型可能是 symbol或者带泛型参数的类型，或者函数表达式 (...) => <type>
 	if p.testNext('(') {
 		// 函数签名类型 (...) => <type>
@@ -689,10 +691,10 @@ func (p *parser) checkType() *typeTreeItem {
 		p.checkNext('=')
 		p.checkNext('>')
 		returnType := p.checkType()
-		return &typeTreeItem{
-			itemType: simpleFuncType,
-			funcTypeParams: funcParams,
-			funcReturnType: returnType,
+		return &TypeTreeItem{
+			ItemType:       simpleFuncType,
+			FuncTypeParams: funcParams,
+			FuncReturnType: returnType,
 		}
 	}
 
@@ -701,16 +703,16 @@ func (p *parser) checkType() *typeTreeItem {
 		// 带泛型参数的类型，比如P<T1, T2>
 		namelist := p.nameList() // TODO: 需要支持嵌套的泛型参数，比如P<T1, P2<T2> >
 		p.checkNext('>')
-		return &typeTreeItem{
-			itemType:simpleNameWithGenericTypesType,
-			name: typeName,
-			genericTypeParams: namelist,
+		return &TypeTreeItem{
+			ItemType:          simpleNameWithGenericTypesType,
+			Name:              typeName,
+			GenericTypeParams: namelist,
 		}
 	}
 
-	return &typeTreeItem{
-		itemType:simpleNameType,
-		name: typeName,
+	return &TypeTreeItem{
+		ItemType: simpleNameType,
+		Name:     typeName,
 	}
 }
 
@@ -775,10 +777,10 @@ func (p *parser) statement() {
 
 		typedef =  ‘type’ Name {‘<’ { Name [‘,’ Name ] } ‘>’} ‘=’  Name {‘<’ { Name [‘,’ Name ] } ‘>’}
 		 */
-		// TODO: record的属性可能有默认值，比如 type Person = { name: string, age: int default 18 }
+		// TODO: record的属性可能有默认值，比如 type Person = { Name: string, age: int default 18 }
 		p.next()
 		typeNameToken := p.checkName()
-		log.Printf("type name found %s\n", typeNameToken)
+		log.Printf("type Name found %s\n", typeNameToken)
 		_ = typeNameToken
 		var typeGenericNameList []string
 		if p.testNext('<') {
@@ -786,7 +788,7 @@ func (p *parser) statement() {
 			typeGenericNameList = p.nameList()
 			p.check('>')
 			p.next()
-			log.Printf("type generic names: %a\n", typeGenericNameList)
+			log.Printf("type generic Names: %a\n", typeGenericNameList)
 			p.checkNext('=')
 		} else {
 			// 可能是 type Name = ...
@@ -794,8 +796,8 @@ func (p *parser) statement() {
 		}
 		if p.testNext('{') {
 			// 可能是 ‘{‘ {  Name ‘:’ type [  ‘,’  Name ‘:’ type  ]  } ‘}’
-			recordInfo := &recordTypeInfo{
-				name:typeNameToken,
+			recordInfo := &RecordTypeInfo{
+				Name: typeNameToken,
 			}
 			for {
 				if p.testNext('}') {
@@ -804,9 +806,9 @@ func (p *parser) statement() {
 				propName := p.checkName()
 				p.checkNext(':')
 				propType := p.checkType()
-				recordInfo.props = append(recordInfo.props, &recordTypePropInfo{
-					propName:propName,
-					propType: propType,
+				recordInfo.Props = append(recordInfo.Props, &RecordTypePropInfo{
+					PropName: propName,
+					PropType: propType,
 				})
 				if p.testNext('}') {
 					break
@@ -815,11 +817,11 @@ func (p *parser) statement() {
 			}
 			log.Printf("= record {%a}\n", *recordInfo)
 			// record类型定义，除了要把新类型加入到parser类型系统外，还要创建构造函数的指令
-			p.typeChecker.AddGlobalType(typeNameToken, &typeTreeItem{
-				itemType: simpleRecordType,
-				name: typeNameToken,
-				genericTypeParams: typeGenericNameList,
-				recordType:recordInfo,
+			p.typeChecker.AddGlobalType(typeNameToken, &TypeTreeItem{
+				ItemType:          simpleRecordType,
+				Name:              typeNameToken,
+				GenericTypeParams: typeGenericNameList,
+				RecordType:        recordInfo,
 			}, line)
 			// TODO: 提前创建局部变量，否则会变成全局变量
 			p.function.MakeLocalVariable(typeNameToken)
@@ -839,12 +841,12 @@ func (p *parser) statement() {
 			}
 			log.Printf("= %s<%a>\n", rightTypeName, rightTypeNameList)
 			// 类型重命名除了把新类型加入到parser的namespace中，如果右侧是record类型，还要创建新的构造函数
-			p.typeChecker.AddGlobalType(typeNameToken, &typeTreeItem{
-				itemType: simpleNameType,
-				name: typeNameToken,
-				genericTypeParams: typeGenericNameList,
-				aliasTypeName: rightTypeName,
-				aliasTypeParams: rightTypeNameList,
+			p.typeChecker.AddGlobalType(typeNameToken, &TypeTreeItem{
+				ItemType:          simpleNameType,
+				Name:              typeNameToken,
+				GenericTypeParams: typeGenericNameList,
+				AliasTypeName:     rightTypeName,
+				AliasTypeParams:   rightTypeNameList,
 			}, line)
 			if p.typeChecker.Contains(rightTypeName) && p.typeChecker.IsRecordType(rightTypeName) {
 				// type alias右侧是record类型，则新类型需要有构造函数
@@ -878,7 +880,7 @@ func (p *parser) mainFunction() {
 	p.function = p.function.CloseMainFunction()
 }
 
-func ParseToPrototype(r io.ByteReader, name string) *Prototype {
+func ParseToPrototype(r io.ByteReader, name string) (*Prototype, *TypeChecker) {
 	p := &parser{
 		scanner: scanner{r: r, lineNumber: 1, lastLine: 1, lookAheadToken: token{t: tkEOS}, source: name},
 		typeChecker: NewTypeChecker(),
@@ -887,5 +889,8 @@ func ParseToPrototype(r io.ByteReader, name string) *Prototype {
 	p.function = f
 	p.mainFunction()
 
-	return f.f
+	p.typeChecker.RootScope.StartLine = 1
+	p.typeChecker.RootScope.EndLine = p.lineNumber
+
+	return f.f, p.typeChecker
 }

@@ -1,6 +1,9 @@
 package parser
 
-import "log"
+import (
+	"log"
+	"os"
+)
 
 func lua_assert(cond bool) {
 	if !cond {
@@ -10,4 +13,16 @@ func lua_assert(cond bool) {
 
 func lua_throw_error(err error, msg string) {
 	log.Fatalf(err.Error() + ": %s\n", msg)
+}
+
+func CheckFileExists(filepath string) (bool, error) {
+	_, err := os.Stat(filepath)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	return false, err
 }

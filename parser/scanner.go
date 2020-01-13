@@ -73,7 +73,7 @@ var tokens []string = []string{
 	"nil", "not", "or", "repeat",
 	"return", "then", "true", "until", "while",
 	"..", "...", "==", ">=", "<=", "~=", "::", "//", "<eof>",
-	"<number>", "<name>", "<string>",
+	"<number>", "<Name>", "<string>",
 }
 
 type token struct {
@@ -167,7 +167,7 @@ func (s *scanner) checkNext(str string) bool {
 	return true
 }
 
-func (s *scanner) skipSeparator() int { // TODO is this the right name?
+func (s *scanner) skipSeparator() int { // TODO is this the right Name?
 	i, c := 0, s.current
 	s.assert(c == '[' || c == ']')
 	for s.saveAndAdvance(); s.current == '='; i++ {
@@ -569,7 +569,7 @@ func (s *scanner) checkMatch(what, who rune, where int) {
 		if where == s.lineNumber {
 			s.errorExpected(what)
 		} else {
-			s.syntaxError(fmt.Sprintf("%s expected (to close %s at line %d)", s.tokenToString(what), s.tokenToString(who), where))
+			s.syntaxError(fmt.Sprintf("%s expected (to close %s at Line %d)", s.tokenToString(what), s.tokenToString(who), where))
 		}
 	}
 }

@@ -35,7 +35,7 @@ func (p *Prototype) preParseLabelLocations() (err error) {
 	return
 }
 
-// ParseInstructionToAsmLine transform instruction to asm line
+// ParseInstructionToAsmLine transform instruction to asm Line
 // @return : err, insStr, useExtended, extraArg
 func (proto *Prototype) ParseInstructionToAsmLine(i instruction, indexInProtoCode int) (err error, insStr string, useExtended bool, extraArg bool) {
 	op := i.opCode()

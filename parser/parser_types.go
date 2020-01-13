@@ -12,35 +12,35 @@ const (
 	simpleInnerType                    // 内置类型，比如int, string, table, Array, Map等
 )
 
-type recordTypePropInfo struct {
-	propName string
-	propType *typeTreeItem
+type RecordTypePropInfo struct {
+	PropName string
+	PropType *TypeTreeItem
 }
 
-type recordTypeInfo struct {
-	name string
-	props []*recordTypePropInfo
+type RecordTypeInfo struct {
+	Name  string
+	Props []*RecordTypePropInfo
 }
 
-type funcTypeParamInfo struct {
-	name string
-	typeInfo *typeTreeItem
-	isDynamicParams bool // 是否是 ... 参数
+type FuncTypeParamInfo struct {
+	Name            string
+	TypeInfo        *TypeTreeItem
+	IsDynamicParams bool // 是否是 ... 参数
 }
 
-type typeTreeItem struct {
-	itemType typeItemType
-	name string
-	genericTypeParams []string
-	aliasTypeName string
-	aliasTypeParams []string
+type TypeTreeItem struct {
+	ItemType          typeItemType
+	Name              string
+	GenericTypeParams []string
+	AliasTypeName     string
+	AliasTypeParams   []string
 
-	recordType *recordTypeInfo
+	RecordType *RecordTypeInfo
 
-	funcTypeParams []*funcTypeParamInfo
-	funcReturnType *typeTreeItem
+	FuncTypeParams []*FuncTypeParamInfo
+	FuncReturnType *TypeTreeItem
 }
 
 var (
-	objectTypeTreeItem = &typeTreeItem{itemType:simpleInnerType, name:"object"}
+	objectTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"object"}
 )

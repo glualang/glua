@@ -12,7 +12,7 @@ func (p *parser) genEmptyTable() exprDesc {
 func (p *parser) genAnnoyRecordFunc(protoName string, line int) exprDesc {
 	p.function.OpenFunction(line)
 	// 增加一个可选的参数, table类型，作为默认实现
-	p.function.MakeLocalVariable("props")
+	p.function.MakeLocalVariable("Props")
 	p.function.AdjustLocalVariables(1)
 
 	p.function.f.parameterCount = 1
@@ -22,15 +22,15 @@ func (p *parser) genAnnoyRecordFunc(protoName string, line int) exprDesc {
 	p.enterLevel() // enter record func body
 	f := p.function
 	f.f.name = protoName
-	// 函数体目前逻辑是 if props then return props else return {} end
+	// 函数体目前逻辑是 if Props then return Props else return {} end
 	escapes := noJump
-	propsCheckE := p.function.SingleVariable("props")
+	propsCheckE := p.function.SingleVariable("Props")
 	propsCheckE = p.function.GoIfTrue(propsCheckE)
 	p.function.EnterBlock(false)
 	jumpFalse := propsCheckE.f
 	// statementList
-	// return props
-	propsE := p.function.SingleVariable("props")
+	// return Props
+	propsE := p.function.SingleVariable("Props")
 	p.function.ExpressionToNextRegister(propsE)
 	f.Return(propsE, 1)
 
@@ -57,6 +57,6 @@ func (p *parser) genAnnoyRecordFunc(protoName string, line int) exprDesc {
 }
 
 // 产生record的构造函数的指令
-func (p *parser) genRecordFunc(recordInfo *recordTypeInfo, line int) exprDesc {
-	return p.genAnnoyRecordFunc(recordInfo.name, line)
+func (p *parser) genRecordFunc(recordInfo *RecordTypeInfo, line int) exprDesc {
+	return p.genAnnoyRecordFunc(recordInfo.Name, line)
 }

@@ -31,7 +31,7 @@ const (
 
 const (
 	/*----------------------------------------------------------------------
-	  name		args	description
+	  Name		args	description
 	  ------------------------------------------------------------------------*/
 	opMove opCode = iota       /*	A B	R(A) := R(B)					*/
 	opLoadConstant             /*	A Bx	R(A) := Kst(Bx)					*/
