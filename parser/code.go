@@ -54,7 +54,7 @@ const (
 	kindTrue
 	kindFalse
 	kindConstant       // info = index of constant
-	kindNumber         // value = numerical value
+	kindNumber         // value = numerical value // TODO: 区分整数和浮点数
 	kindNonRelocatable // info = result register
 	kindLocal          // info = local register
 	kindUpValue        // info = index of upvalue

@@ -77,6 +77,20 @@ func programMain() (err error) {
 	defer dumpProtoF.Close()
 	proto.ToFuncAsm(dumpProtoF, true)
 	_ = proto
+
+	warinings, compileErrs := typeChecker.Validate()
+	if len(warinings) > 0 {
+		fmt.Println("compile warnings:")
+		for _, warning := range warinings {
+			fmt.Println(warning.Error())
+		}
+	}
+	if len(compileErrs) > 0 {
+		fmt.Println("compile errors:")
+		for _, compileErr := range compileErrs {
+			fmt.Println(compileErr.Error())
+		}
+	}
 	return
 }
 

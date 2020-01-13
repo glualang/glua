@@ -12,6 +12,7 @@ type State = {
 }
 
 var a: int = 3
+var a_err: int = "error"
 let b: string = 'hello'
 local c: Person2 = Person2({})
 c.name = 'person2[c]'

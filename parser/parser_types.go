@@ -1,5 +1,7 @@
 package parser
 
+import "fmt"
+
 // 编译期的类型系统
 
 type typeItemType int
@@ -10,6 +12,8 @@ const (
 	simpleRecordType                   // record类型
 	simpleFuncType                     // 函数类型
 	simpleInnerType                    // 内置类型，比如int, string, table, Array, Map等
+
+	simpleNotDerivedType               // 暂未推导出的类型
 )
 
 type RecordTypePropInfo struct {
@@ -31,16 +35,45 @@ type FuncTypeParamInfo struct {
 type TypeTreeItem struct {
 	ItemType          typeItemType
 	Name              string
-	GenericTypeParams []string
-	AliasTypeName     string
-	AliasTypeParams   []string
+	GenericTypeParams []string `json:"GenericTypeParams,omitempty"`
+	AliasTypeName     string `json:"AliasTypeName,omitempty"`
+	AliasTypeParams   []string `json:"AliasTypeParams,omitempty"`
 
-	RecordType *RecordTypeInfo
+	RecordType *RecordTypeInfo `json:"RecordType,omitempty"`
 
-	FuncTypeParams []*FuncTypeParamInfo
-	FuncReturnType *TypeTreeItem
+	FuncTypeParams []*FuncTypeParamInfo `json:"FuncTypeParams,omitempty"`
+	FuncReturnType *TypeTreeItem `json:"FuncReturnType,omitempty"`
+}
+
+func (item *TypeTreeItem) String() string {
+	switch item.ItemType {
+	case simpleNameType:
+		return item.Name
+	case simpleInnerType:
+		return item.Name
+	case simpleFuncType:
+		return fmt.Sprintf("<func %s(%a)%s>", item.Name, item.FuncTypeParams, item.FuncReturnType.String())
+	case simpleRecordType:
+		return fmt.Sprintf("<record (%a)>", item.RecordType)
+	case simpleNameWithGenericTypesType:
+		return fmt.Sprintf("<record %s<%a>>", item.Name, item.GenericTypeParams)
+	case simpleNotDerivedType:
+		return "<not_derived>"
+	default:
+		return "uknown type"
+	}
 }
 
 var (
 	objectTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"object"}
+	nilTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"nil"}
+	boolTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"bool"}
+	intTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"int"}
+	numberTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"number"}
+	stringTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"string"}
+	arrayTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"Array"}
+	mapTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"Map"}
+	tableTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name:"table"}
+
+	notDerivedTypeTreeItem = &TypeTreeItem{ItemType: simpleNotDerivedType, Name:"not_derived"}
 )

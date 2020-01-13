@@ -15,6 +15,20 @@ type parser struct {
 	nestedGoCallCount     int
 
 	typeChecker *TypeChecker
+
+	isCapturingExprList bool // 是否开始采集表达式列表
+	capturingExprList []exprDesc // 采集到的表达式列表
+}
+
+func (p *parser) startCaptureExprList() {
+	p.isCapturingExprList = true
+}
+
+func (p *parser) StopCaptureExprList() []exprDesc {
+	p.isCapturingExprList = false
+	saved := p.capturingExprList
+	p.capturingExprList = nil
+	return saved
 }
 
 func (p *parser) checkCondition(c bool, message string) {
@@ -298,6 +312,9 @@ func (p *parser) subExpression(limit int) (e exprDesc, op int) {
 
 func (p *parser) expression() (e exprDesc) {
 	e, _ = p.subExpression(0)
+	if p.isCapturingExprList {
+		p.capturingExprList = append(p.capturingExprList, e)
+	}
 	return
 }
 
@@ -644,6 +661,8 @@ func (p *parser) localFunction() {
 
 func (p *parser) localStatement() {
 	v := 0
+	var varNameList []string = make([]string, 0)
+	var varNameLines = make(map[string]int)
 	for first := true; first || p.testNext(','); v++ {
 		varName := p.checkName()
 		varNameLine := p.lineNumber
@@ -653,10 +672,26 @@ func (p *parser) localStatement() {
 		}
 		p.function.MakeLocalVariable(varName)
 		first = false
+		varNameList = append(varNameList, varName)
+		varNameLines[varName] = varNameLine
 	}
 	if p.testNext('=') {
+		p.startCaptureExprList()
+		defer p.StopCaptureExprList()
 		e, n := p.expressionList()
 		p.function.AdjustAssignment(v, n, e)
+		// 局部变量初始化，需要在type checker中增加约束
+		assignedExprList := p.capturingExprList
+		checkParamsCount := len(varNameList)
+		if checkParamsCount > len(assignedExprList) {
+			checkParamsCount = len(assignedExprList)
+		}
+		for i:=0;i<checkParamsCount;i++ {
+			varName := varNameList[i]
+			exprTypeDerived := p.typeChecker.deriveExprType(assignedExprList[i])
+			log.Printf("deriving expr type for var %s: %s\n", varName, exprTypeDerived.String())
+			p.typeChecker.AddConstraint(varName, exprTypeDerived, varNameLines[varName])
+		}
 	} else {
 		var e exprDesc
 		p.function.AdjustAssignment(v, 0, e)

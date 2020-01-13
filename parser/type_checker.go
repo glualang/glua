@@ -2,6 +2,7 @@ package parser
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 )
 
@@ -20,10 +21,10 @@ type TypeInfoScope struct {
 	EndLine int
 	Names             []string
 	NameLines         map[string]int // 变量申明时所在的proto的函数
-	VariableTypeInfos map[string]*TypeTreeItem
-	Constraints       []*TypeInfoConstraint // 本词法作用域中的类型约束
+	VariableTypeInfos map[string]*TypeTreeItem  `json:"VariableTypeInfos,omitempty"`
+	Constraints       []*TypeInfoConstraint  `json:"Constraints,omitempty"` // 本词法作用域中的类型约束
 
-	Children []*TypeInfoScope // 子作用域
+	Children []*TypeInfoScope   `json:"Children,omitempty"` // 子作用域
 	Parent   *TypeInfoScope   `json:"-"` // 上级作用域
 }
 
@@ -54,6 +55,21 @@ func (scope *TypeInfoScope) get(name string) (result *TypeTreeItem, line int, ok
 		return
 	}
 	result, line, ok = scope.Parent.get(name)
+	return
+}
+
+// 如果类型信息还没展开(比如是名称，或者是typedef的类型)，则展开这种类型
+func (scope *TypeInfoScope) resolve(typeInfo *TypeTreeItem) (result *TypeTreeItem) {
+	result = typeInfo
+	if typeInfo.ItemType == simpleNameType {
+		resolved, _, ok := scope.get(typeInfo.Name)
+		if !ok {
+			return
+		}
+		result = resolved
+		return
+	}
+	// TODO: typedef等类型的展开，比如P<T1, T2> 展开
 	return
 }
 
@@ -105,6 +121,14 @@ func (checker *TypeChecker) AddVariable(name string, item *TypeTreeItem, line in
 	checker.CurrentProtoScope.add(name, item, line)
 }
 
+func (checker *TypeChecker) AddConstraint(name string, usingAsTypeInfo *TypeTreeItem, line int) {
+	checker.CurrentProtoScope.Constraints = append(checker.CurrentProtoScope.Constraints, &TypeInfoConstraint{
+		Name: name,
+		Line: line,
+		UsingAsTypeInfo: usingAsTypeInfo,
+	})
+}
+
 func (checker *TypeChecker) Contains(name string) bool {
 	_, _, ok := checker.CurrentProtoScope.get(name)
 	return ok
@@ -129,7 +153,32 @@ func (checker *TypeChecker) ToTreeString() (result string, err error) {
 }
 
 // 验证整个类型信息树是否正确，包括其中有根据名字引用其他类型暂时还没resolve的也这时候resolve出来验证
-func (checker *TypeChecker) Validate() (warnings []error, errs []error) {
-	// TODO
+func (scope *TypeInfoScope) Validate() (warnings []error, errs []error) {
+	for _, constraint := range scope.Constraints {
+		varName := constraint.Name
+		varDeclareType, _, ok := scope.get(varName)
+		usingAsTypeInfo := constraint.UsingAsTypeInfo
+		if !ok {
+			warnings = append(warnings, fmt.Errorf("can't find variable %s at line %d", varName, constraint.Line))
+			continue
+		}
+		varDeclareType = scope.resolve(varDeclareType)
+		usingAsTypeInfo = scope.resolve(usingAsTypeInfo)
+
+		if !IsTypeAssignable(usingAsTypeInfo, varDeclareType) {
+			warnings = append(warnings, fmt.Errorf("variable %s declared as %s but got %s at line %d",
+				varName, varDeclareType.String(), usingAsTypeInfo.String(), constraint.Line))
+			continue
+		}
+	}
+	for _, child := range scope.Children {
+		subWarnings, subErrors := child.Validate()
+		warnings = append(warnings, subWarnings...)
+		errs = append(errs, subErrors...)
+	}
 	return
+}
+
+func (checker *TypeChecker) Validate() (warnings []error, errs []error) {
+	return checker.RootScope.Validate()
 }
