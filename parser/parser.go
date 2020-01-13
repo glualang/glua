@@ -689,7 +689,6 @@ func (p *parser) localStatement() {
 		for i:=0;i<checkParamsCount;i++ {
 			varName := varNameList[i]
 			exprTypeDerived := p.typeChecker.deriveExprType(assignedExprList[i])
-			log.Printf("deriving expr type for var %s: %s\n", varName, exprTypeDerived.String())
 			p.typeChecker.AddConstraint(varName, exprTypeDerived, varNameLines[varName])
 		}
 	} else {
@@ -801,7 +800,7 @@ func (p *parser) statement() {
 	case tkBreak, tkGoto:
 		p.gotoStatement(p.function.Jump())
 	case tkType:
-		// TODO: type definition，可能需要参考 functionStatement
+		// type definition
 		/*
 
 		type = Name |
@@ -823,7 +822,6 @@ func (p *parser) statement() {
 			typeGenericNameList = p.nameList()
 			p.check('>')
 			p.next()
-			log.Printf("type generic Names: %a\n", typeGenericNameList)
 			p.checkNext('=')
 		} else {
 			// 可能是 type Name = ...
@@ -841,6 +839,14 @@ func (p *parser) statement() {
 				propName := p.checkName()
 				p.checkNext(':')
 				propType := p.checkType()
+
+				if p.s == "default" {
+					p.next()
+					defaultExpr := p.expression()
+					_ = defaultExpr // TODO: record prop类型的初始化值的处理
+					log.Println("warning: record prop default value not supported yet")
+				}
+
 				recordInfo.Props = append(recordInfo.Props, &RecordTypePropInfo{
 					PropName: propName,
 					PropType: propType,

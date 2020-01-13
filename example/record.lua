@@ -8,7 +8,7 @@ type Person2<int, string> = Person1<int, string>
 
 type State = {
     name: string,
-    age: int
+    age: int default 1
 }
 
 var a: int = 3
