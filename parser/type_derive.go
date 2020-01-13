@@ -20,8 +20,22 @@ func (checker *TypeChecker) deriveExprType(e exprDesc) (result *TypeTreeItem) {
 	case kindCall:
 		return notDerivedTypeTreeItem // TODO
 	case kindLocal:
+		if len(e.symbol) < 1 {
+			return notDerivedTypeTreeItem
+		}
+		resolved, _, ok := checker.CurrentProtoScope.get(e.symbol)
+		if ok {
+			return resolved
+		}
 		return notDerivedTypeTreeItem
 	case kindUpValue:
+		if len(e.symbol) < 1 {
+			return notDerivedTypeTreeItem
+		}
+		resolved, _, ok := checker.CurrentProtoScope.get(e.symbol)
+		if ok {
+			return resolved
+		}
 		return notDerivedTypeTreeItem
 	default:
 		return notDerivedTypeTreeItem

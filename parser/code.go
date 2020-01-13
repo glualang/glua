@@ -90,6 +90,8 @@ type exprDesc struct {
 	info      int
 	t, f      int // patch lists for 'exit when true/false'
 	value     float64
+
+	symbol   string // 当是单符号变量时用这个
 }
 
 type assignmentTarget struct {
@@ -1081,15 +1083,20 @@ func singleVariableHelper(f *function, name string, base bool) (e exprDesc, foun
 		if e = makeExpression(kindLocal, v); !base {
 			owningBlock(f.block, v).hasUpValue = true
 		}
+		e.symbol = name
 		return
 	}
 	if v, found = findUpValue(); found {
-		return makeExpression(kindUpValue, v), true
+		e = makeExpression(kindUpValue, v)
+		e.symbol = name
+		return e, true
 	}
 	if e, found = singleVariableHelper(f.previous, name, false); !found {
 		return
 	}
-	return makeExpression(kindUpValue, f.makeUpValue(name, e)), true
+	e = makeExpression(kindUpValue, f.makeUpValue(name, e))
+	e.symbol = name
+	return e, true
 }
 
 func (f *function) SingleVariable(name string) (e exprDesc) {

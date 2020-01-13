@@ -31,7 +31,8 @@ print('7>>2=', 7 >> 2)
 
 let f1: string = 'hello'
 let f2: Person2 = Person2()
-let f3: Person1<int, string> = Person2()
-let f4: (a: int, b: Person2) => int = function(a: int, b: Person2)
+let f3: Person1 = f2
+let f4: Person1<int, string> = Person2()
+let f5: (a: int, b: Person2) => int = function(a: int, b: Person2)
     return a
 end

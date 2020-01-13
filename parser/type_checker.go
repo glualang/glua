@@ -67,6 +67,11 @@ func (scope *TypeInfoScope) resolve(typeInfo *TypeTreeItem) (result *TypeTreeIte
 			return
 		}
 		result = resolved
+		if result == typeInfo {
+			return
+		}
+		// TODO: 可能还没展开完成，再次展开。比如 f3:  value: Person2-0, declare: Person1-2
+		result = scope.resolve(result)
 		return
 	}
 	// TODO: typedef等类型的展开，比如P<T1, T2> 展开
@@ -165,6 +170,7 @@ func (scope *TypeInfoScope) Validate() (warnings []error, errs []error) {
 		varDeclareType = scope.resolve(varDeclareType)
 		usingAsTypeInfo = scope.resolve(usingAsTypeInfo)
 
+		log.Println(varName)
 		if !IsTypeAssignable(usingAsTypeInfo, varDeclareType) {
 			warnings = append(warnings, fmt.Errorf("variable %s declared as %s but got %s at line %d",
 				varName, varDeclareType.String(), usingAsTypeInfo.String(), constraint.Line))
