@@ -23,7 +23,7 @@ func main()  {
 	// TODO: dump AST tree to tree string
 
 	// dump AST to lua-asm
-	dumpProtoFilename := "target/" + filename + ".asm"
+	dumpProtoFilename := filename + ".asm"
 	os.Remove(dumpProtoFilename)
 	os.Create(dumpProtoFilename)
 	dumpProtoF, err := os.OpenFile(dumpProtoFilename, os.O_WRONLY, os.ModeAppend)

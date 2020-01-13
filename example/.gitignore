@@ -1,0 +1,3 @@
+*.lua.asm
+*.glua.asm
+*.lua.out

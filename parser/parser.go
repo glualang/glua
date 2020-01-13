@@ -535,14 +535,56 @@ func (p *parser) nameList() []string {
 	return names
 }
 
+func (p *parser) checkParameterList() (result []*funcTypeParamInfo) {
+	isVarArg := false
+	if p.t != ')' {
+		for first := true; first || (!isVarArg && p.testNext(',')); first = false {
+			switch p.t {
+			case tkName:
+				paramName := p.checkName()
+				var paramType *typeTreeItem
+				if p.testNext(':') {
+					// 可选的 : type
+					paramType = p.checkType()
+				} else {
+					paramType = objectTypeTreeItem
+				}
+				result = append(result, &funcTypeParamInfo{
+					name: paramName,
+					typeInfo: paramType,
+					isDynamicParams: false,
+				})
+			case tkDots:
+				p.next()
+				isVarArg = true
+				result = append(result, &funcTypeParamInfo{
+					isDynamicParams: true,
+				})
+			default:
+				p.syntaxError("<name> or '...' expected")
+			}
+		}
+	}
+	return
+}
+
 func (p *parser) parameterList() {
 	n, isVarArg := 0, false
 	if p.t != ')' {
 		for first := true; first || (!isVarArg && p.testNext(',')); first = false {
 			switch p.t {
 			case tkName:
-				p.function.MakeLocalVariable(p.checkName())
+				paramName := p.checkName()
+				p.function.MakeLocalVariable(paramName)
 				n++
+				var paramType *typeTreeItem
+				if p.testNext(':') {
+					// 可选的 : type
+					paramType = p.checkType()
+				} else {
+					paramType = objectTypeTreeItem
+				}
+				p.typeChecker.AddVariable(paramName, paramType, p.lineNumber)
 			case tkDots:
 				p.next()
 				isVarArg = true
@@ -639,8 +681,33 @@ func (p *parser) returnStatement() {
 }
 
 func (p *parser) checkType() *typeTreeItem {
-	// TODO: 类型可能 symbol或者带泛型参数的类型，或者函数表达式 (...) => <type>
+	// 类型可能是 symbol或者带泛型参数的类型，或者函数表达式 (...) => <type>
+	if p.testNext('(') {
+		// 函数签名类型 (...) => <type>
+		funcParams := p.checkParameterList()
+		p.checkNext(')')
+		p.checkNext('=')
+		p.checkNext('>')
+		returnType := p.checkType()
+		return &typeTreeItem{
+			itemType: simpleFuncType,
+			funcTypeParams: funcParams,
+			funcReturnType: returnType,
+		}
+	}
+
 	typeName := p.checkName()
+	if p.testNext('<') {
+		// 带泛型参数的类型，比如P<T1, T2>
+		namelist := p.nameList() // TODO: 需要支持嵌套的泛型参数，比如P<T1, P2<T2> >
+		p.checkNext('>')
+		return &typeTreeItem{
+			itemType:simpleNameWithGenericTypesType,
+			name: typeName,
+			genericTypeParams: namelist,
+		}
+	}
+
 	return &typeTreeItem{
 		itemType:simpleNameType,
 		name: typeName,
