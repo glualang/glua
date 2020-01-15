@@ -60,6 +60,14 @@ func IsTypeAssignable(valueType *TypeTreeItem, declareType *TypeTreeItem) bool {
 
 	// TODO: 提前准备类型的继承树，方便判断类型
 
+	if valueType.ItemType != declareType.ItemType {
+		return false
+	}
+
+	if valueType.ItemType == simpleRecordType && declareType.ItemType == simpleRecordType {
+		return valueType.Name == declareType.Name
+	}
+
 	if valueType.ItemType == simpleInnerType && declareType.ItemType == simpleInnerType {
 		if valueType.Name == declareType.Name {
 			return true

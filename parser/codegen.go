@@ -12,7 +12,8 @@ func (p *parser) genEmptyTable() exprDesc {
 func (p *parser) genAnnoyRecordFunc(protoName string, line int) exprDesc {
 	p.function.OpenFunction(line)
 	// 增加一个可选的参数, table类型，作为默认实现
-	p.function.MakeLocalVariable("Props")
+	propsVarName := "props"
+	p.function.MakeLocalVariable(propsVarName)
 	p.function.AdjustLocalVariables(1)
 
 	p.function.f.parameterCount = 1
@@ -24,13 +25,13 @@ func (p *parser) genAnnoyRecordFunc(protoName string, line int) exprDesc {
 	f.f.name = protoName
 	// 函数体目前逻辑是 if Props then return Props else return {} end
 	escapes := noJump
-	propsCheckE := p.function.SingleVariable("Props")
+	propsCheckE := p.function.SingleVariable(propsVarName)
 	propsCheckE = p.function.GoIfTrue(propsCheckE)
 	p.function.EnterBlock(false)
 	jumpFalse := propsCheckE.f
 	// statementList
 	// return Props
-	propsE := p.function.SingleVariable("Props")
+	propsE := p.function.SingleVariable(propsVarName)
 	p.function.ExpressionToNextRegister(propsE)
 	f.Return(propsE, 1)
 

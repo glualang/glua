@@ -70,11 +70,23 @@ func (scope *TypeInfoScope) resolve(typeInfo *TypeTreeItem) (result *TypeTreeIte
 		if result == typeInfo {
 			return
 		}
-		// TODO: 可能还没展开完成，再次展开。比如 f3:  value: Person2-0, declare: Person1-2
 		result = scope.resolve(result)
 		return
 	}
-	// TODO: typedef等类型的展开，比如P<T1, T2> 展开
+	// typedef等类型的展开，比如P<T1, T2> 展开
+	if typeInfo.ItemType == simpleAliasType {
+		// TODO: 如果有泛型参数，给alias target type的泛型实例参数增加新项
+		resolved, _, ok := scope.get(typeInfo.AliasTypeName)
+		if !ok {
+			return
+		}
+		result = resolved
+		if result == typeInfo {
+			return
+		}
+		result = scope.resolve(result)
+		return
+	}
 	return
 }
 

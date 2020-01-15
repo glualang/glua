@@ -10,6 +10,7 @@ const (
 	simpleNameType typeItemType = iota // 单独一个符号指向的类型
 	simpleNameWithGenericTypesType     // P<T1, T2> 这类类型符号加泛型参数的类型，属于还没resolve过程中的类型
 	simpleRecordType                   // record类型
+	simpleAliasType                    // 类型重命名或者带泛型参数的类型重命名
 	simpleFuncType                     // 函数类型
 	simpleInnerType                    // 内置类型，比如int, string, table, Array, Map等
 

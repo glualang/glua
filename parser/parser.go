@@ -811,7 +811,7 @@ func (p *parser) statement() {
 
 		typedef =  ‘type’ Name {‘<’ { Name [‘,’ Name ] } ‘>’} ‘=’  Name {‘<’ { Name [‘,’ Name ] } ‘>’}
 		 */
-		// TODO: record的属性可能有默认值，比如 type Person = { Name: string, age: int default 18 }
+		// record的属性可能有默认值，比如 type Person = { Name: string, age: int default 18 }
 		p.next()
 		typeNameToken := p.checkName()
 		log.Printf("type Name found %s\n", typeNameToken)
@@ -883,7 +883,7 @@ func (p *parser) statement() {
 			log.Printf("= %s<%a>\n", rightTypeName, rightTypeNameList)
 			// 类型重命名除了把新类型加入到parser的namespace中，如果右侧是record类型，还要创建新的构造函数
 			p.typeChecker.AddGlobalType(typeNameToken, &TypeTreeItem{
-				ItemType:          simpleNameType,
+				ItemType:          simpleAliasType,
 				Name:              typeNameToken,
 				GenericTypeParams: typeGenericNameList,
 				AliasTypeName:     rightTypeName,
