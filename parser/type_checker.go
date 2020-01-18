@@ -15,12 +15,20 @@ type TypeInfoConstraint struct {
 	UsingAsTypeInfo *TypeTreeItem // name被当成什么类型来使用。要求name的实际类型能和这个类型兼容，也就是需要name的类型是usingAsTypeInfo的子类型或者本身
 }
 
+type VariableType int
+
+const (
+	VAR_VARIABLE VariableType = iota // 可变类型变量
+	CONST_VARIABLE                   // 不可变类型变量
+)
+
 // 类型信息作用域
 type TypeInfoScope struct {
 	StartLine int
 	EndLine int
 	Names             []string
 	NameLines         map[string]int // 变量申明时所在的proto的函数
+	NameDeclareTypes map[string]VariableType // 变量的变量类型，比如是可变变量还是不可变变量
 	VariableTypeInfos map[string]*TypeTreeItem  `json:"VariableTypeInfos,omitempty"`
 	Constraints       []*TypeInfoConstraint  `json:"Constraints,omitempty"` // 本词法作用域中的类型约束
 
@@ -32,29 +40,32 @@ func NewTypeInfoScope() *TypeInfoScope {
 	return &TypeInfoScope{
 		Names:             nil,
 		NameLines:         make(map[string]int),
+		NameDeclareTypes:  make(map[string]VariableType),
 		VariableTypeInfos: make(map[string]*TypeTreeItem),
 		Children:          nil,
 	}
 }
 
 
-func (scope *TypeInfoScope) add(name string, item *TypeTreeItem, line int) {
+func (scope *TypeInfoScope) add(name string, item *TypeTreeItem, line int, varType VariableType) {
 	scope.Names = append(scope.Names, name)
 	scope.VariableTypeInfos[name] = item
 	scope.NameLines[name] = line
+	scope.NameDeclareTypes[name] = varType
 }
 
-func (scope *TypeInfoScope) get(name string) (result *TypeTreeItem, line int, ok bool) {
+func (scope *TypeInfoScope) get(name string) (result *TypeTreeItem, line int, varType VariableType, ok bool) {
 	result, ok = scope.VariableTypeInfos[name]
 	line, lineOk := scope.NameLines[name]
-	if ok && lineOk {
+	varType, varTypeOk := scope.NameDeclareTypes[name]
+	if ok && lineOk && varTypeOk {
 		return
 	}
 	ok = false
 	if scope.Parent == nil {
 		return
 	}
-	result, line, ok = scope.Parent.get(name)
+	result, line, varType, ok = scope.Parent.get(name)
 	return
 }
 
@@ -62,7 +73,7 @@ func (scope *TypeInfoScope) get(name string) (result *TypeTreeItem, line int, ok
 func (scope *TypeInfoScope) resolve(typeInfo *TypeTreeItem) (result *TypeTreeItem) {
 	result = typeInfo
 	if typeInfo.ItemType == simpleNameType {
-		resolved, _, ok := scope.get(typeInfo.Name)
+		resolved, _, _, ok := scope.get(typeInfo.Name)
 		if !ok {
 			return
 		}
@@ -76,7 +87,7 @@ func (scope *TypeInfoScope) resolve(typeInfo *TypeTreeItem) (result *TypeTreeIte
 	// typedef等类型的展开，比如P<T1, T2> 展开
 	if typeInfo.ItemType == simpleAliasType {
 		// TODO: 如果有泛型参数，给alias target type的泛型实例参数增加新项
-		resolved, _, ok := scope.get(typeInfo.AliasTypeName)
+		resolved, _, _, ok := scope.get(typeInfo.AliasTypeName)
 		if !ok {
 			return
 		}
@@ -102,7 +113,7 @@ func NewTypeChecker() *TypeChecker {
 		rootScope.add(t, &TypeTreeItem{
 			ItemType: simpleInnerType,
 			Name:     t,
-		}, 0)
+		}, 0, CONST_VARIABLE)
 	}
 	// TODO: 内置函数和内置模块的类型信息需要初始化时加入
 	return &TypeChecker{
@@ -131,11 +142,11 @@ func (checker *TypeChecker) leaveLevel(line int) {
 }
 
 func (checker *TypeChecker) AddGlobalType(name string, item *TypeTreeItem, line int) {
-	checker.RootScope.add(name, item, line)
+	checker.RootScope.add(name, item, line, VAR_VARIABLE) // 目前把全局变量当成可变变量
 }
 
-func (checker *TypeChecker) AddVariable(name string, item *TypeTreeItem, line int) {
-	checker.CurrentProtoScope.add(name, item, line)
+func (checker *TypeChecker) AddVariable(name string, item *TypeTreeItem, line int, varType VariableType) {
+	checker.CurrentProtoScope.add(name, item, line, varType)
 }
 
 func (checker *TypeChecker) AddConstraint(name string, usingAsTypeInfo *TypeTreeItem, line int) {
@@ -147,12 +158,12 @@ func (checker *TypeChecker) AddConstraint(name string, usingAsTypeInfo *TypeTree
 }
 
 func (checker *TypeChecker) Contains(name string) bool {
-	_, _, ok := checker.CurrentProtoScope.get(name)
+	_, _, _, ok := checker.CurrentProtoScope.get(name)
 	return ok
 }
 
 func (checker *TypeChecker) IsRecordType(name string) bool {
-	info, _, ok := checker.CurrentProtoScope.get(name)
+	info, _, _, ok := checker.CurrentProtoScope.get(name)
 	if !ok {
 		return false
 	}
@@ -174,7 +185,7 @@ func (checker *TypeChecker) ToTreeString() (result string, err error) {
 func (scope *TypeInfoScope) Validate() (warnings []error, errs []error) {
 	for _, constraint := range scope.Constraints {
 		varName := constraint.Name
-		varDeclareType, _, ok := scope.get(varName)
+		varDeclareType, _, _, ok := scope.get(varName)
 		usingAsTypeInfo := constraint.UsingAsTypeInfo
 		if !ok {
 			warnings = append(warnings, fmt.Errorf("can't find variable %s at line %d", varName, constraint.Line))
@@ -190,6 +201,7 @@ func (scope *TypeInfoScope) Validate() (warnings []error, errs []error) {
 			continue
 		}
 	}
+	// TODO: 找出对变量重新赋值的语句，检查类型和是否const变量
 	for _, child := range scope.Children {
 		subWarnings, subErrors := child.Validate()
 		warnings = append(warnings, subWarnings...)

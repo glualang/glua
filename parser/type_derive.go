@@ -14,16 +14,18 @@ func (checker *TypeChecker) deriveExprType(e exprDesc) (result *TypeTreeItem) {
 	case kindNil:
 		return nilTypeTreeItem
 	case kindConstant:
-		return stringTypeTreeItem // TODO: 多种常量类型。目前这里都是字符串类型
+		return stringTypeTreeItem // 多种常量类型。目前这里都是字符串类型
+	case kindInt:
+		return intTypeTreeItem
 	case kindNumber:
-		return numberTypeTreeItem // TODO: 整数或者浮点数
+		return numberTypeTreeItem
 	case kindCall:
 		return notDerivedTypeTreeItem // TODO
 	case kindLocal:
 		if len(e.symbol) < 1 {
 			return notDerivedTypeTreeItem
 		}
-		resolved, _, ok := checker.CurrentProtoScope.get(e.symbol)
+		resolved, _, _, ok := checker.CurrentProtoScope.get(e.symbol)
 		if ok {
 			return resolved
 		}
@@ -32,7 +34,7 @@ func (checker *TypeChecker) deriveExprType(e exprDesc) (result *TypeTreeItem) {
 		if len(e.symbol) < 1 {
 			return notDerivedTypeTreeItem
 		}
-		resolved, _, ok := checker.CurrentProtoScope.get(e.symbol)
+		resolved, _, _, ok := checker.CurrentProtoScope.get(e.symbol)
 		if ok {
 			return resolved
 		}

@@ -605,7 +605,7 @@ func (p *parser) parameterList() {
 				} else {
 					paramType = objectTypeTreeItem
 				}
-				p.typeChecker.AddVariable(paramName, paramType, p.lineNumber)
+				p.typeChecker.AddVariable(paramName, paramType, p.lineNumber, VAR_VARIABLE)
 			case tkDots:
 				p.next()
 				isVarArg = true
@@ -663,7 +663,7 @@ func (p *parser) localFunction() {
 	p.function.LocalVariable(p.body(false, p.lineNumber).info).startPC = pc(len(p.function.f.code))
 }
 
-func (p *parser) localStatement() {
+func (p *parser) localStatement(varDeclareType VariableType) {
 	v := 0
 	var varNameList []string = make([]string, 0)
 	var varNameLines = make(map[string]int)
@@ -672,7 +672,7 @@ func (p *parser) localStatement() {
 		varNameLine := p.lineNumber
 		if p.testNext(':') {
 			varType := p.checkType()
-			p.typeChecker.AddVariable(varName, varType, varNameLine)
+			p.typeChecker.AddVariable(varName, varType, varNameLine, varDeclareType)
 		}
 		p.function.MakeLocalVariable(varName)
 		first = false
@@ -779,21 +779,21 @@ func (p *parser) statement() {
 		if p.testNext(tkFunction) {
 			p.localFunction()
 		} else {
-			p.localStatement()
+			p.localStatement(VAR_VARIABLE)
 		}
 	case tkVar:
 		p.next()
 		if p.testNext(tkFunction) {
 			p.localFunction()
 		} else {
-			p.localStatement()
+			p.localStatement(VAR_VARIABLE)
 		}
 	case tkLet:
 		p.next()
 		if p.testNext(tkFunction) {
 			p.localFunction()
 		} else {
-			p.localStatement()
+			p.localStatement(CONST_VARIABLE)
 		}
 	case tkDoubleColon:
 		p.next()
