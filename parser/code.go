@@ -54,7 +54,8 @@ const (
 	kindTrue
 	kindFalse
 	kindConstant       // info = index of constant
-	kindNumber         // value = numerical value // TODO: 区分整数和浮点数
+	kindInt            // intValue = integer value
+	kindNumber         // value = numerical value
 	kindNonRelocatable // info = result register
 	kindLocal          // info = local register
 	kindUpValue        // info = index of upvalue
@@ -90,8 +91,31 @@ type exprDesc struct {
 	info      int
 	t, f      int // patch lists for 'exit when true/false'
 	value     float64
+	intValue int64
 
 	symbol   string // 当是单符号变量时用这个
+}
+
+func (e *exprDesc) isZero() bool {
+	switch e.kind {
+	case kindInt:
+		return e.intValue == 0
+	case kindNumber:
+		return e.value == 0.0
+	default:
+		return false
+	}
+}
+
+func (e *exprDesc) floatValue() float64 {
+	switch e.kind {
+	case kindInt:
+		return float64(e.intValue)
+	case kindNumber:
+		return e.value
+	default:
+		return 0.0
+	}
 }
 
 type assignmentTarget struct {
@@ -312,7 +336,7 @@ func (f *function) unreachable()                        { f.assert(false) }
 func (f *function) assert(cond bool)                    { lua_assert(cond) }
 func (f *function) Instruction(e exprDesc) *instruction { return &f.f.code[e.info] }
 func (e exprDesc) hasJumps() bool                       { return e.t != e.f }
-func (e exprDesc) isNumeral() bool                      { return e.kind == kindNumber && e.t == noJump && e.f == noJump }
+func (e exprDesc) isNumeral() bool                      { return (e.kind == kindNumber || e.kind == kindInt) && e.t == noJump && e.f == noJump } // TODO: 需要适配整数 kindInt
 func (e exprDesc) isVariable() bool                     { return kindLocal <= e.kind && e.kind <= kindIndexed }
 func (e exprDesc) hasMultipleReturns() bool             { return e.kind == kindCall || e.kind == kindVarArg }
 
@@ -556,6 +580,10 @@ func (f *function) addConstant(k, v value) int {
 	return index
 }
 
+func (f *function) IntConstant(i int64) int {
+	return f.addConstant(i, i)
+}
+
 func (f *function) NumberConstant(n float64) int {
 	if n == 0.0 || math.IsNaN(n) {
 		return f.addConstant(math.Float64bits(n), n)
@@ -642,6 +670,8 @@ func (f *function) dischargeToRegister(e exprDesc, r int) exprDesc {
 		f.EncodeABC(opLoadBool, r, 1, 0)
 	case kindConstant:
 		f.EncodeConstant(r, e.info)
+	case kindInt:
+		f.EncodeConstant(r, f.IntConstant(e.intValue))
 	case kindNumber:
 		f.EncodeConstant(r, f.NumberConstant(e.value))
 	case kindRelocatable:
@@ -738,8 +768,12 @@ func (f *function) expressionToRegisterOrConstant(e exprDesc) (exprDesc, int) {
 			e.info, e.kind = f.nilConstant(), kindConstant
 			return e, asConstant(e.info)
 		}
-	case kindNumber:
-		e.info, e.kind = f.NumberConstant(e.value), kindConstant
+	case kindInt, kindNumber:
+		if e.kind == kindInt {
+			e.info, e.kind = f.IntConstant(e.intValue), kindConstant
+		} else if e.kind == kindNumber {
+			e.info, e.kind = f.NumberConstant(e.value), kindConstant
+		}
 		fallthrough
 	case kindConstant:
 		if e.info <= maxIndexRK {
@@ -809,7 +843,7 @@ func (f *function) GoIfTrue(e exprDesc) exprDesc {
 	case kindJump:
 		f.invertJump(e.info)
 		pc = e.info
-	case kindConstant, kindNumber, kindTrue:
+	case kindConstant, kindInt, kindNumber, kindTrue:
 	default:
 		pc = f.jumpOnCondition(e, 0)
 	}
@@ -838,7 +872,7 @@ func (f *function) encodeLikeNot(e exprDesc, op opCode) exprDesc {
 	switch e = f.DischargeVariables(e); e.kind {
 	case kindNil, kindFalse:
 		e.kind = kindTrue
-	case kindConstant, kindNumber, kindTrue:
+	case kindConstant, kindInt, kindNumber, kindTrue:
 		e.kind = kindFalse
 	case kindJump:
 		f.invertJump(e.info)
@@ -880,10 +914,17 @@ func (f *function) Indexed(t, k exprDesc) (r exprDesc) {
 func foldConstants(op opCode, e1, e2 exprDesc) (exprDesc, bool) {
 	if !e1.isNumeral() || !e2.isNumeral() {
 		return e1, false
-	} else if (op == opDiv || op == opIDiv || op == opMod) && e2.value == 0.0 {
+	} else if (op == opDiv || op == opIDiv || op == opMod) && e2.isZero() {
 		return e1, false
 	}
-	e1.value = arith(Operator(op-opAdd)+OpAdd, e1.value, e2.value)
+	arithOp := Operator(op-opAdd)+OpAdd
+	if e1.kind == kindInt && e2.kind == kindInt {
+		e1.intValue = intArith(arithOp, e1.intValue, e2.intValue)
+	} else if e1.kind == kindInt {
+		e1.intValue = int64(arith(arithOp, e1.floatValue(), e2.floatValue()))
+	} else {
+		e1.value = arith(arithOp, e1.floatValue(), e2.floatValue())
+	}
 	return e1, true
 }
 
@@ -911,6 +952,10 @@ func (f *function) encodeArithmetic(op opCode, e1, e2 exprDesc, line int) exprDe
 func (f *function) Prefix(op int, e exprDesc, line int) exprDesc {
 	switch op {
 	case oprMinus:
+		if e.kind == kindInt {
+			e.intValue = -e.intValue
+			return e
+		}
 		if e.isNumeral() {
 			e.value = -e.value
 			return e
@@ -919,7 +964,7 @@ func (f *function) Prefix(op int, e exprDesc, line int) exprDesc {
 	case oprNot:
 		return f.encodeNot(e)
 	case oprLength:
-		return f.encodeArithmetic(opLength, f.ExpressionToAnyRegister(e), makeExpression(kindNumber, 0), line)
+		return f.encodeArithmetic(opLength, f.ExpressionToAnyRegister(e), makeExpression(kindNumber, 0), line) // TODO: 考虑 kindInt
 	case oprBnot:
 		return f.encodeBnot(e)
 	}

@@ -1,6 +1,9 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // 编译期的类型系统
 
@@ -27,10 +30,26 @@ type RecordTypeInfo struct {
 	Props []*RecordTypePropInfo
 }
 
+func (info *RecordTypeInfo) String() string {
+	var propsStrs []string
+	for _, prop := range info.Props {
+		propsStrs = append(propsStrs, fmt.Sprintf("%s %s", prop.PropName, prop.PropType.String()))
+	}
+	return fmt.Sprintf("record %s<%s>", info.Name, strings.Join(propsStrs, ","))
+}
+
 type FuncTypeParamInfo struct {
 	Name            string
 	TypeInfo        *TypeTreeItem
 	IsDynamicParams bool // 是否是 ... 参数
+}
+
+func (info *FuncTypeParamInfo) String() string {
+	dotsStr := ""
+	if info.IsDynamicParams {
+		dotsStr = ", ..."
+	}
+	return fmt.Sprintf("func %s(%s%s)", info.Name, info.TypeInfo.String(), dotsStr)
 }
 
 type TypeTreeItem struct {
@@ -53,11 +72,15 @@ func (item *TypeTreeItem) String() string {
 	case simpleInnerType:
 		return item.Name
 	case simpleFuncType:
-		return fmt.Sprintf("<func %s(%a)%s>", item.Name, item.FuncTypeParams, item.FuncReturnType.String())
+		var paramsStr []string
+		for _, p := range item.FuncTypeParams {
+			paramsStr = append(paramsStr, p.String())
+		}
+		return fmt.Sprintf("<func %s(%s)%s>", item.Name, strings.Join(paramsStr, ","), item.FuncReturnType.String())
 	case simpleRecordType:
-		return fmt.Sprintf("<record (%a)>", item.RecordType)
+		return fmt.Sprintf("<record (%s)>", item.RecordType.String())
 	case simpleNameWithGenericTypesType:
-		return fmt.Sprintf("<record %s<%a>>", item.Name, item.GenericTypeParams)
+		return fmt.Sprintf("<record %s<%s>>", item.Name, strings.Join(item.GenericTypeParams, ","))
 	case simpleNotDerivedType:
 		return "<not_derived>"
 	default:

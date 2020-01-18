@@ -55,6 +55,7 @@ const (
 	tkShr
 
 	tkEOS
+	tkInt
 	tkNumber
 	tkName
 	tkString
@@ -78,6 +79,7 @@ var tokens []string = []string{
 
 type token struct {
 	t rune
+	i int64
 	n float64
 	s string
 }
@@ -97,6 +99,7 @@ func (s *scanner) assert(cond bool)           { lua_assert(cond) }
 func (s *scanner) syntaxError(message string) { s.scanError(message, s.t) }
 func (s *scanner) errorExpected(t rune)       { s.syntaxError(s.tokenToString(t) + " expected") }
 func (s *scanner) numberError()               { s.scanError("malformed number", tkNumber) }
+func (s *scanner) intError()               { s.scanError("malformed integer", tkInt) }
 func isNewLine(c rune) bool                   { return c == '\n' || c == '\r' }
 func isDecimal(c rune) bool                   { return '0' <= c && c <= '9' }
 
@@ -104,6 +107,8 @@ func (s *scanner) tokenToString(t rune) string {
 	switch {
 	case t == tkName || t == tkString:
 		return s.s
+	case t == tkInt:
+		return fmt.Sprintf("%d", s.i)
 	case t == tkNumber:
 		return fmt.Sprintf("%f", s.n)
 	case t < firstReserved:
@@ -252,6 +257,7 @@ func (s *scanner) readNumber() token {
 	c := s.current
 	s.assert(isDecimal(c))
 	s.saveAndAdvance()
+	isNumber := false
 	if c == '0' && s.checkNext("Xx") { // hexadecimal
 		prefix := s.buffer.String()
 		s.assert(prefix == "0x" || prefix == "0X")
@@ -259,6 +265,7 @@ func (s *scanner) readNumber() token {
 		var exponent int
 		fraction, c, i := s.readHexNumber(0)
 		if c == '.' {
+			isNumber = true
 			s.advance()
 			fraction, c, exponent = s.readHexNumber(fraction)
 		}
@@ -281,15 +288,22 @@ func (s *scanner) readNumber() token {
 				s.numberError()
 			} else if negativeExponent {
 				exponent += int(-e)
+				isNumber = true
 			} else {
 				exponent += int(e)
 			}
 			s.buffer.Reset()
 		}
-		return token{t: tkNumber, n: math.Ldexp(fraction, exponent)}
+		if isNumber {
+			return token{t: tkNumber, n: math.Ldexp(fraction, exponent)}
+		} else {
+			return token{t: tkInt, i: int64(math.Ldexp(fraction, exponent))}
+		}
+
 	}
 	c = s.readDigits()
 	if c == '.' {
+		isNumber = true
 		s.saveAndAdvance()
 		c = s.readDigits()
 	}
@@ -311,7 +325,14 @@ func (s *scanner) readNumber() token {
 		s.numberError()
 	}
 	s.buffer.Reset()
-	return token{t: tkNumber, n: f}
+	if len(str) > 0 && str[0] == '.' {
+		isNumber = true
+	}
+	if isNumber {
+		return token{t: tkNumber, n: f}
+	} else {
+		return token{t: tkInt, i: int64(f)}
+	}
 }
 
 var escapes map[rune]rune = map[rune]rune{

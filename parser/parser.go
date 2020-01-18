@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 )
 
 type parser struct {
@@ -186,6 +187,9 @@ func (p *parser) suffixedExpression() exprDesc {
 
 func (p *parser) simpleExpression() (e exprDesc) {
 	switch p.t {
+	case tkInt:
+		e = makeExpression(kindInt, 0)
+		e.intValue = p.i
 	case tkNumber:
 		e = makeExpression(kindNumber, 0)
 		e.value = p.n
@@ -856,7 +860,7 @@ func (p *parser) statement() {
 				}
 				p.testNext(',')
 			}
-			log.Printf("= record {%a}\n", *recordInfo)
+			log.Printf("= record {%s}\n", recordInfo.String())
 			// record类型定义，除了要把新类型加入到parser类型系统外，还要创建构造函数的指令
 			p.typeChecker.AddGlobalType(typeNameToken, &TypeTreeItem{
 				ItemType:          simpleRecordType,
@@ -880,7 +884,7 @@ func (p *parser) statement() {
 				rightTypeNameList = p.nameList()
 				p.checkNext('>')
 			}
-			log.Printf("= %s<%a>\n", rightTypeName, rightTypeNameList)
+			log.Printf("= %s<%s>\n", rightTypeName, strings.Join(rightTypeNameList, ","))
 			// 类型重命名除了把新类型加入到parser的namespace中，如果右侧是record类型，还要创建新的构造函数
 			p.typeChecker.AddGlobalType(typeNameToken, &TypeTreeItem{
 				ItemType:          simpleAliasType,
@@ -892,7 +896,7 @@ func (p *parser) statement() {
 			if p.typeChecker.Contains(rightTypeName) && p.typeChecker.IsRecordType(rightTypeName) {
 				// type alias右侧是record类型，则新类型需要有构造函数
 				// 创建新的构造函数并把新创建的构造函数赋值给上面的新局部变量
-				// TODO: 提前创建局部变量，否则会变成全局变量
+				// 提前创建局部变量，否则会变成全局变量
 				p.function.MakeLocalVariable(typeNameToken)
 				p.function.AdjustLocalVariables(1)
 

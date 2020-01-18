@@ -17,6 +17,8 @@ func literalValueString(v value) (result string, ok bool) {
 	switch v := v.(type) {
 	case string:
 		return "\"" + v + "\"", true // TODO: escape string
+	case int64:
+		return fmt.Sprintf("%d", v), true
 	case float64:
 		return fmt.Sprintf("%f", v), true
 	case nil:
@@ -222,6 +224,29 @@ func numberToString(f float64) string {
 	return fmt.Sprintf("%.14g", f)
 }
 
+func intArith(op Operator, v1, v2 int64) int64 {
+	switch op {
+	case OpAdd:
+		return v1 + v2
+	case OpSub:
+		return v1 - v2
+	case OpMul:
+		return v1 * v2
+	case OpDiv:
+		return v1 / v2
+	case OpMod:
+		return v1 - v1/v2*v2
+	case OpPow:
+		// Golang bug: math.Pow(10.0, 33.0) is incorrect by 1 bit.
+		if v1 == 10.0 && int64(int(v2)) == v2 {
+			return int64(math.Pow10(int(v2)))
+		}
+		return int64(math.Pow(float64(v1), float64(v2)))
+	case OpUnaryMinus:
+		return -v1
+	}
+	panic(fmt.Sprintf("not an arithmetic op code (%d)", op))
+}
 
 func arith(op Operator, v1, v2 float64) float64 {
 	switch op {

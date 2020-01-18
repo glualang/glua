@@ -156,7 +156,8 @@ func (checker *TypeChecker) IsRecordType(name string) bool {
 	if !ok {
 		return false
 	}
-	return info.ItemType == simpleNameType || info.ItemType == simpleRecordType // TODO: 暂时因为没有向上resolve，所以可能是simpleName/record类型
+	info = checker.CurrentProtoScope.resolve(info)
+	return info.ItemType == simpleRecordType
 }
 
 // 把词法作用域的类型信息树dump成树形字符串用来显示
