@@ -23,4 +23,3 @@ func chunkID(source string) string {
 	}
 	return "[string \"" + source + "\"]"
 }
-

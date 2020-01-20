@@ -60,7 +60,6 @@ const (
 	tkName
 	tkString
 
-
 	reservedCount = tkWhile - firstReserved + 1
 )
 
@@ -99,7 +98,7 @@ func (s *scanner) assert(cond bool)           { lua_assert(cond) }
 func (s *scanner) syntaxError(message string) { s.scanError(message, s.t) }
 func (s *scanner) errorExpected(t rune)       { s.syntaxError(s.tokenToString(t) + " expected") }
 func (s *scanner) numberError()               { s.scanError("malformed number", tkNumber) }
-func (s *scanner) intError()               { s.scanError("malformed integer", tkInt) }
+func (s *scanner) intError()                  { s.scanError("malformed integer", tkInt) }
 func isNewLine(c rune) bool                   { return c == '\n' || c == '\r' }
 func isDecimal(c rune) bool                   { return '0' <= c && c <= '9' }
 

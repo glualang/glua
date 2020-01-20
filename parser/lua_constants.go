@@ -5,7 +5,6 @@ import "errors"
 // MultipleReturns is the argument for argCount or resultCount in ProtectedCall and Call.
 const MultipleReturns = -1
 
-
 // An Operator is an op argument for Arith.
 type Operator int
 

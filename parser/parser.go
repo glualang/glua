@@ -13,12 +13,12 @@ type parser struct {
 	activeVariables            []int
 	pendingGotos, activeLabels []label
 
-	nestedGoCallCount     int
+	nestedGoCallCount int
 
 	typeChecker *TypeChecker
 
-	isCapturingExprList bool // 是否开始采集表达式列表
-	capturingExprList []exprDesc // 采集到的表达式列表
+	isCapturingExprList bool       // 是否开始采集表达式列表
+	capturingExprList   []exprDesc // 采集到的表达式列表
 }
 
 func (p *parser) startCaptureExprList() {
@@ -175,6 +175,7 @@ func (p *parser) suffixedExpression() exprDesc {
 			e = p.function.Indexed(p.function.ExpressionToAnyRegisterOrUpValue(e), p.index())
 		case ':':
 			p.next()
+			// a:b(args) 的表达式，相当于a.b(a, args). 其中a需要是symbol
 			e = p.functionArguments(p.function.Self(e, p.checkNameAsExpression()), line)
 		case '(', tkString, '{':
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
@@ -691,7 +692,7 @@ func (p *parser) localStatement(varDeclareType VariableType) {
 		if checkParamsCount > len(assignedExprList) {
 			checkParamsCount = len(assignedExprList)
 		}
-		for i:=0;i<checkParamsCount;i++ {
+		for i := 0; i < checkParamsCount; i++ {
 			varName := varNameList[i]
 			exprTypeDerived := p.typeChecker.deriveExprType(assignedExprList[i])
 			p.typeChecker.AddConstraint(varName, exprTypeDerived, varNameLines[varName])
@@ -808,14 +809,14 @@ func (p *parser) statement() {
 		// type definition
 		/*
 
-		type = Name |
-		        '(' {type} [‘,’ type] ‘)’  ‘=>’ type
+			type = Name |
+			        '(' {type} [‘,’ type] ‘)’  ‘=>’ type
 
-		record = ‘type’ Name {‘<’ { Name [‘,’ Name ] } ‘>’} ‘=’
-		                    ‘{‘ {  Name ‘:’ type [  ‘,’  Name ‘:’ type  ]  } ‘}’
+			record = ‘type’ Name {‘<’ { Name [‘,’ Name ] } ‘>’} ‘=’
+			                    ‘{‘ {  Name ‘:’ type [  ‘,’  Name ‘:’ type  ]  } ‘}’
 
-		typedef =  ‘type’ Name {‘<’ { Name [‘,’ Name ] } ‘>’} ‘=’  Name {‘<’ { Name [‘,’ Name ] } ‘>’}
-		 */
+			typedef =  ‘type’ Name {‘<’ { Name [‘,’ Name ] } ‘>’} ‘=’  Name {‘<’ { Name [‘,’ Name ] } ‘>’}
+		*/
 		// record的属性可能有默认值，比如 type Person = { Name: string, age: int default 18 }
 		p.next()
 		typeNameToken := p.checkName()
@@ -928,10 +929,10 @@ func (p *parser) mainFunction() {
 
 func ParseToPrototype(r io.ByteReader, name string) (*Prototype, *TypeChecker) {
 	p := &parser{
-		scanner: scanner{r: r, lineNumber: 1, lastLine: 1, lookAheadToken: token{t: tkEOS}, source: name},
+		scanner:     scanner{r: r, lineNumber: 1, lastLine: 1, lookAheadToken: token{t: tkEOS}, source: name},
 		typeChecker: NewTypeChecker(),
 	}
-	f := &function{f: &Prototype{source: name, maxStackSize: 2, isVarArg: true, extra:NewPrototypeExtra(), name: "main"}, constantLookup: make(map[value]int), p: p, jumpPC: noJump}
+	f := &function{f: &Prototype{source: name, maxStackSize: 2, isVarArg: true, extra: NewPrototypeExtra(), name: "main"}, constantLookup: make(map[value]int), p: p, jumpPC: noJump}
 	p.function = f
 	p.mainFunction()
 

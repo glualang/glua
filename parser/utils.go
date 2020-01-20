@@ -12,7 +12,7 @@ func lua_assert(cond bool) {
 }
 
 func lua_throw_error(err error, msg string) {
-	log.Fatalf(err.Error() + ": %s\n", msg)
+	log.Fatalf(err.Error()+": %s\n", msg)
 }
 
 func CheckFileExists(filepath string) (bool, error) {

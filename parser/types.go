@@ -219,7 +219,6 @@ func intFromFloat8(x float8) int {
 	return int(x&7+8) << uint(e-1)
 }
 
-
 func numberToString(f float64) string {
 	return fmt.Sprintf("%.14g", f)
 }

@@ -1,8 +1,8 @@
 package parser
 
 import (
-"fmt"
-"math"
+	"fmt"
+	"math"
 )
 
 const (
@@ -61,7 +61,7 @@ const (
 	kindUpValue        // info = index of upvalue
 	kindIndexed        // table = table register/upvalue, index = register/constant index
 	kindJump           // info = instruction pc
-	kindRelocatable    // info = instruction pc
+	kindRelocatable    // info = instruction pc 表示这个表达式的目标寄存器(第一个instruction op arg)需要之后重定位，暂时可能被设置为其他占位符比如0
 	kindCall           // info = instruction pc
 	kindVarArg         // info = instruction pc
 )
@@ -91,9 +91,9 @@ type exprDesc struct {
 	info      int
 	t, f      int // patch lists for 'exit when true/false'
 	value     float64
-	intValue int64
+	intValue  int64
 
-	symbol   string // 当是单符号变量时用这个
+	symbol string // 当是单符号变量时用这个
 }
 
 func (e *exprDesc) isZero() bool {
@@ -150,11 +150,11 @@ type function struct {
 
 func (f *function) OpenFunction(line int) {
 	f.f.prototypes = append(f.f.prototypes, Prototype{
-		source: f.p.source,
+		source:       f.p.source,
 		maxStackSize: 2,
-		lineDefined: line,
-		name: genPrototypeName(),
-		extra: NewPrototypeExtra(),
+		lineDefined:  line,
+		name:         genPrototypeName(),
+		extra:        NewPrototypeExtra(),
 	})
 	f.p.function = &function{f: &f.f.prototypes[len(f.f.prototypes)-1], constantLookup: make(map[value]int), previous: f, p: f.p, jumpPC: noJump, firstLocal: len(f.p.activeVariables)}
 	f.p.function.EnterBlock(false)
@@ -336,9 +336,11 @@ func (f *function) unreachable()                        { f.assert(false) }
 func (f *function) assert(cond bool)                    { lua_assert(cond) }
 func (f *function) Instruction(e exprDesc) *instruction { return &f.f.code[e.info] }
 func (e exprDesc) hasJumps() bool                       { return e.t != e.f }
-func (e exprDesc) isNumeral() bool                      { return (e.kind == kindNumber || e.kind == kindInt) && e.t == noJump && e.f == noJump } // TODO: 需要适配整数 kindInt
-func (e exprDesc) isVariable() bool                     { return kindLocal <= e.kind && e.kind <= kindIndexed }
-func (e exprDesc) hasMultipleReturns() bool             { return e.kind == kindCall || e.kind == kindVarArg }
+func (e exprDesc) isNumeral() bool {
+	return (e.kind == kindNumber || e.kind == kindInt) && e.t == noJump && e.f == noJump
+}                                           // TODO: 需要适配整数 kindInt
+func (e exprDesc) isVariable() bool         { return kindLocal <= e.kind && e.kind <= kindIndexed }
+func (e exprDesc) hasMultipleReturns() bool { return e.kind == kindCall || e.kind == kindVarArg }
 
 func (f *function) assertEqual(a, b interface{}) {
 	if a != b {
@@ -420,6 +422,7 @@ func (f *function) JumpTo(target int)             { f.PatchList(f.Jump(), target
 func (f *function) ReturnNone()                   { f.EncodeABC(opReturn, 0, 1, 0) }
 func (f *function) SetMultipleReturns(e exprDesc) { f.setReturns(e, MultipleReturns) }
 
+// return语句的指令生成
 func (f *function) Return(e exprDesc, resultCount int) {
 	if e.hasMultipleReturns() {
 		if f.SetMultipleReturns(e); e.kind == kindCall && resultCount == 1 {
@@ -452,10 +455,12 @@ func (f *function) fixJump(pc, dest int) {
 }
 
 func (f *function) Label() int {
+	// label定义处之前的本proto的指令数量就是本label的开始位置，也就是跳转到这个label对应的目标. goto label1 对应的指令是 jmp (label1.target - pc)
 	f.lastTarget = len(f.f.code)
 	return f.lastTarget
 }
 
+// 返回要跳转到哪条指令(返回值是本proto中指令的索引)
 func (f *function) jump(pc int) int {
 	f.assert(f.isJumpListWalkable(pc))
 	if offset := f.f.code[pc].sbx(); offset != noJump {
@@ -475,6 +480,8 @@ func (f *function) isJumpListWalkable(list int) bool {
 	return offset == noJump || f.isJumpListWalkable(list+1+offset)
 }
 
+// 返回空值这条jmp指令的指令（比如JMP指令前一条的TEST/TESTSET指令，或者JMP指令本身）.
+// JMP指令出现一般两种情况，条件比较指令后的跳转（TEST/TESTSET指令后紧跟着JMP指令）或者goto语句（直接生成一个JMP指令）
 func (f *function) jumpControl(pc int) *instruction {
 	if pc >= 1 && testTMode(f.f.code[pc-1].opCode()) {
 		return &f.f.code[pc-1]
@@ -555,6 +562,7 @@ func (f *function) PatchToHere(list int) {
 	f.assert(f.isJumpListWalkable(f.jumpPC))
 }
 
+// 如果l1和l2都是跳转指令，合并两个跳转指令
 func (f *function) Concatenate(l1, l2 int) int {
 	f.assert(f.isJumpListWalkable(l1))
 	switch {
@@ -563,13 +571,16 @@ func (f *function) Concatenate(l1, l2 int) int {
 		return l2
 	default:
 		list := l1
+		// 合并 jmp label1; label1: jmp label2; label2: ... 这类的连续跳转的指令
 		for next := f.jump(list); next != noJump; list, next = next, f.jump(next) {
 		}
+		// 修改list指令(是一个JMP指令)的跳转目标为l2
 		f.fixJump(list, l2)
 	}
 	return l1
 }
 
+// 在proto的常量池中增加一个新常量，返回此常量在常量池中索引
 func (f *function) addConstant(k, v value) int {
 	if index, ok := f.constantLookup[k]; ok && f.f.constants[index] == v {
 		return index
@@ -591,6 +602,7 @@ func (f *function) NumberConstant(n float64) int {
 	return f.addConstant(n, n)
 }
 
+// 检查本proto的栈是否还能增加{n}个寄存器
 func (f *function) CheckStack(n int) {
 	if n += f.freeRegisterCount; n >= maxStack {
 		f.p.syntaxError("function or expression too complex")
@@ -816,6 +828,8 @@ func (f *function) StoreVariable(v, e exprDesc) {
 	f.freeExpression(e)
 }
 
+// 把key表达式作为e表达式（比如一个a:b(args)的成员函数调用表达式）的self参数来使用.
+// e的指令生成，需要先生成self参数的构造，然后把剩余args参数的压栈指令构造，然后才是构造函数调用的指令
 func (f *function) Self(e, key exprDesc) exprDesc {
 	e = f.ExpressionToAnyRegister(e)
 	r := e.info
@@ -834,6 +848,7 @@ func (f *function) invertJump(pc int) {
 	i.setA(not(i.a()))
 }
 
+// 生成如果{e}表达式不匹配cond(一般是1 真或者0 假),就跳转到e.info，否则继续执行的指令. 对应TEST/TESTSET指令
 func (f *function) jumpOnCondition(e exprDesc, cond int) int {
 	if e.kind == kindRelocatable {
 		if i := f.Instruction(e); i.opCode() == opNot {
@@ -846,6 +861,7 @@ func (f *function) jumpOnCondition(e exprDesc, cond int) int {
 	return f.conditionalJump(opTestSet, noRegister, e.info, cond)
 }
 
+// 生成如果{e}表达式是真值，就继续执行的指令
 func (f *function) GoIfTrue(e exprDesc) exprDesc {
 	pc := noJump
 	switch e = f.DischargeVariables(e); e.kind {
@@ -854,10 +870,11 @@ func (f *function) GoIfTrue(e exprDesc) exprDesc {
 		pc = e.info
 	case kindConstant, kindInt, kindNumber, kindTrue:
 	default:
-		pc = f.jumpOnCondition(e, 0)
+		// 如果{e}是真值，则跳转到e.info,否则继续执行下一条指令
+		pc = f.jumpOnCondition(e, 0) // pc是生成的最后一个JMP指令的索引
 	}
 	e.f = f.Concatenate(e.f, pc)
-	f.PatchToHere(e.t)
+	f.PatchToHere(e.t) // 生成一个label，用来作为刚生成的JMP指令的跳转目标
 	e.t = noJump
 	return e
 }
@@ -927,7 +944,7 @@ func foldConstants(op opCode, e1, e2 exprDesc) (exprDesc, bool) {
 	} else if (op == opDiv || op == opIDiv || op == opMod) && e2.isZero() {
 		return e1, false
 	}
-	arithOp := Operator(op-opAdd)+OpAdd
+	arithOp := Operator(op-opAdd) + OpAdd
 	if e1.kind == kindInt && e2.kind == kindInt {
 		e1.intValue = intArith(arithOp, e1.intValue, e2.intValue)
 	} else if e1.kind == kindInt {
@@ -983,7 +1000,7 @@ func (f *function) Prefix(op int, e exprDesc, line int) exprDesc {
 	panic("unreachable")
 }
 
-// 二元运算符的表达式的预处理指令的生成，比如: a + b 先把参数都加载到寄存器
+// 二元运算符的表达式的第一个操作数表达式的指令生成，比如 a and b 相当于 if a then <result> = a else <result> = b end. 实际生成时用TEST/TEST+JMP指令来生成
 func (f *function) Infix(op int, e exprDesc) exprDesc {
 	switch op {
 	case oprAnd:
@@ -1002,7 +1019,7 @@ func (f *function) Infix(op int, e exprDesc) exprDesc {
 	return e
 }
 
-// 比较表达式的指令生产
+// 比较表达式的指令生成
 func (f *function) encodeComparison(op opCode, cond int, e1, e2 exprDesc) exprDesc {
 	e1, o1 := f.expressionToRegisterOrConstant(e1)
 	e2, o2 := f.expressionToRegisterOrConstant(e2)

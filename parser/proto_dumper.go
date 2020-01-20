@@ -7,6 +7,7 @@ import (
 )
 
 var protoNameIdGen = 0
+
 func genPrototypeName() string {
 	defer func() {
 		protoNameIdGen++
@@ -121,4 +122,3 @@ func (p *Prototype) ToFuncAsm(outfile *os.File, isTop bool) (err error) {
 	outfile.WriteString("\r\n")
 	return
 }
-

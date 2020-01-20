@@ -11,7 +11,7 @@ func (p *Prototype) preParseLabelLocations() (err error) {
 	var ins instruction
 	var operand int
 	var jmpDest int
-	for i:=0;i<len(p.code);i++ {
+	for i := 0; i < len(p.code); i++ {
 		ins = p.code[i]
 		opcode := ins.opCode()
 		if int(opcode) >= int(NUM_OPCODES) {
@@ -20,7 +20,7 @@ func (p *Prototype) preParseLabelLocations() (err error) {
 		count := Opcounts[opcode]
 		info := Opinfos[opcode]
 
-		for j:=0;j<count;j++ {
+		for j := 0; j < count; j++ {
 			if info[j].limit == LIMIT_LOCATION {
 				operand = ins.sbx()
 				jmpDest = operand + 1 + i
@@ -53,7 +53,7 @@ func (proto *Prototype) ParseInstructionToAsmLine(i instruction, indexInProtoCod
 		insStr = ""
 	}
 
-	for j:=0;j<opCount;j++ {
+	for j := 0; j < opCount; j++ {
 		limit := opInfo[j].limit
 		switch opInfo[j].pos {
 		case OPP_A:

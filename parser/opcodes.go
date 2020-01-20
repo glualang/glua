@@ -33,65 +33,65 @@ const (
 	/*----------------------------------------------------------------------
 	  Name		args	description
 	  ------------------------------------------------------------------------*/
-	opMove opCode = iota       /*	A B	R(A) := R(B)					*/
-	opLoadConstant             /*	A Bx	R(A) := Kst(Bx)					*/
-	opLoadConstantEx           /*	A 	R(A) := Kst(extra arg)				*/
-	opLoadBool                 /*	A B C	R(A) := (Bool)B; if (C) pc++			*/
-	opLoadNil                  /*	A B	R(A), R(A+1), ..., R(A+B) := nil		*/
-	opGetUpValue               /*	A B	R(A) := UpValue[B]				*/
-	opGetTableUp               /*	A B C	R(A) := UpValue[B][RK(C)]			*/
-	opGetTable                 /*	A B C	R(A) := R(B)[RK(C)]				*/
-	opSetTableUp               /*	A B C	UpValue[A][RK(B)] := RK(C)			*/
-	opSetUpValue               /*	A B	UpValue[B] := R(A)				*/
-	opSetTable                 /*	A B C	R(A)[RK(B)] := RK(C)				*/
-	opNewTable                 /*	A B C	R(A) := {} (size = B,C)				*/
-	opSelf                     /*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/
-	opAdd                      /*	A B C	R(A) := RK(B) + RK(C)				*/
-	opSub                      /*	A B C	R(A) := RK(B) - RK(C)				*/
-	opMul                      /*	A B C	R(A) := RK(B) * RK(C)				*/
-	opMod                      /*	A B C	R(A) := RK(B) % RK(C)				*/
-	opPow                      /*	A B C	R(A) := RK(B) ^ RK(C)				*/
-	opDiv                      /*	A B C	R(A) := RK(B) / RK(C)				*/
-	opIDiv                     /*	A B C	R(A) := RK(B) // RK(C)				*/
-	opBand                     /*	A B C	R(A) := RK(B) & RK(C)				*/
-	opBor                      /*	A B C	R(A) := RK(B) | RK(C)				*/
-	opBxor                     /*	A B C	R(A) := RK(B) ~ RK(C)				*/
-	opShl                      /*	A B C	R(A) := RK(B) << RK(C)				*/
-	opShr                      /*	A B C	R(A) := RK(B) >> RK(C)				*/
-	opUnaryMinus               /*	A B	R(A) := -R(B)					*/
-	opBnot                     /*	A B	R(A) := ~R(B)					*/
-	opNot                      /*	A B	R(A) := not R(B)				*/
-	opLength                   /*	A B	R(A) := length of R(B)				*/
-	opConcat                   /*	A B C	R(A) := R(B).. ... ..R(C)			*/
-	opJump                     /*	A sBx	pc+=sBx; if (A) close all upvalues >= R(A - 1)	*/
-	opEqual                    /*	A B C	if ((RK(B) == RK(C)) ~= A) then pc++		*/
-	opLessThan                 /*	A B C	if ((RK(B) <  RK(C)) ~= A) then pc++		*/
-	opLessOrEqual              /*	A B C	if ((RK(B) <= RK(C)) ~= A) then pc++		*/
+	opMove           opCode = iota /*	A B	R(A) := R(B)					*/
+	opLoadConstant                 /*	A Bx	R(A) := Kst(Bx)					*/
+	opLoadConstantEx               /*	A 	R(A) := Kst(extra arg)				*/
+	opLoadBool                     /*	A B C	R(A) := (Bool)B; if (C) pc++			*/
+	opLoadNil                      /*	A B	R(A), R(A+1), ..., R(A+B) := nil		*/
+	opGetUpValue                   /*	A B	R(A) := UpValue[B]				*/
+	opGetTableUp                   /*	A B C	R(A) := UpValue[B][RK(C)]			*/
+	opGetTable                     /*	A B C	R(A) := R(B)[RK(C)]				*/
+	opSetTableUp                   /*	A B C	UpValue[A][RK(B)] := RK(C)			*/
+	opSetUpValue                   /*	A B	UpValue[B] := R(A)				*/
+	opSetTable                     /*	A B C	R(A)[RK(B)] := RK(C)				*/
+	opNewTable                     /*	A B C	R(A) := {} (size = B,C)				*/
+	opSelf                         /*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/
+	opAdd                          /*	A B C	R(A) := RK(B) + RK(C)				*/
+	opSub                          /*	A B C	R(A) := RK(B) - RK(C)				*/
+	opMul                          /*	A B C	R(A) := RK(B) * RK(C)				*/
+	opMod                          /*	A B C	R(A) := RK(B) % RK(C)				*/
+	opPow                          /*	A B C	R(A) := RK(B) ^ RK(C)				*/
+	opDiv                          /*	A B C	R(A) := RK(B) / RK(C)				*/
+	opIDiv                         /*	A B C	R(A) := RK(B) // RK(C)				*/
+	opBand                         /*	A B C	R(A) := RK(B) & RK(C)				*/
+	opBor                          /*	A B C	R(A) := RK(B) | RK(C)				*/
+	opBxor                         /*	A B C	R(A) := RK(B) ~ RK(C)				*/
+	opShl                          /*	A B C	R(A) := RK(B) << RK(C)				*/
+	opShr                          /*	A B C	R(A) := RK(B) >> RK(C)				*/
+	opUnaryMinus                   /*	A B	R(A) := -R(B)					*/
+	opBnot                         /*	A B	R(A) := ~R(B)					*/
+	opNot                          /*	A B	R(A) := not R(B)				*/
+	opLength                       /*	A B	R(A) := length of R(B)				*/
+	opConcat                       /*	A B C	R(A) := R(B).. ... ..R(C)			*/
+	opJump                         /*	A sBx	pc+=sBx; if (A) close all upvalues >= R(A - 1)	*/
+	opEqual                        /*	A B C	if ((RK(B) == RK(C)) ~= A) then pc++		*/
+	opLessThan                     /*	A B C	if ((RK(B) <  RK(C)) ~= A) then pc++		*/
+	opLessOrEqual                  /*	A B C	if ((RK(B) <= RK(C)) ~= A) then pc++		*/
 
-	opTest                     /*	A C	if not (R(A) <=> C) then pc++			*/
-	opTestSet                  /*	A B C	if (R(B) <=> C) then R(A) := R(B) else pc++	*/
-	opCall                     /*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */
-	opTailCall                 /*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/
-	opReturn                   /*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/
-	opForLoop                  /*	A sBx	R(A)+=R(A+2);
-		                                         if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/
-	opForPrep                  /*	A sBx	R(A)-=R(A+2); pc+=sBx				*/
-	opTForCall                 /*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));	*/
-	opTForLoop                 /*	A sBx	if R(A+1) ~= nil then { R(A)=R(A+1); pc += sBx }*/
-	opSetList                  /*	A B C	R(A)[(C-1)*FPF+i] := R(A+i), 1 <= i <= B	*/
-	opClosure                  /*	A Bx	R(A) := closure(KPROTO[Bx])			*/
-	opVarArg                   /*	A B	R(A), R(A+1), ..., R(A+B-2) = vararg		*/
-	opExtraArg                 /*	Ax	extra (larger) argument for previous opcode	*/
+	opTest     /*	A C	if not (R(A) <=> C) then pc++			*/
+	opTestSet  /*	A B C	if (R(B) <=> C) then R(A) := R(B) else pc++	*/
+	opCall     /*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */
+	opTailCall /*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/
+	opReturn   /*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/
+	opForLoop  /*	A sBx	R(A)+=R(A+2);
+	if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/
+	opForPrep  /*	A sBx	R(A)-=R(A+2); pc+=sBx				*/
+	opTForCall /*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));	*/
+	opTForLoop /*	A sBx	if R(A+1) ~= nil then { R(A)=R(A+1); pc += sBx }*/
+	opSetList  /*	A B C	R(A)[(C-1)*FPF+i] := R(A+i), 1 <= i <= B	*/
+	opClosure  /*	A Bx	R(A) := closure(KPROTO[Bx])			*/
+	opVarArg   /*	A B	R(A), R(A+1), ..., R(A+B-2) = vararg		*/
+	opExtraArg /*	Ax	extra (larger) argument for previous opcode	*/
 
 	// added opcodes for other languages trans to lua bytecode
-	opPush                     /* A   top++, evalstack(top) = R(A)  */
-	opPop                      /* A   R(A) := evalstack(top), top-- */
-	opGetTop                   /* A   R(A) := evalstack(top) */
-	opCmp                      /* A B C   R(A) = 1 if RK(B) > RK(C), 0 if RK(B) == RK(C), -1 if RK(B) < RK(C) */
-	opCmpEq                    /* A B C R(A) = 1 if RK(B) == RK(C), else 0 */
-	opCmpNe                    /* A B C R(A) = 1 if RK(B) != RK(C), else 0 */
-	opCmpGt                    /* A B C R(A) = 1 if RK(B) > RK(C), else 0 */
-	opCmpLt                    /* A B C R(A) = 1 if RK(B) < RK(C), else 0 */
+	opPush   /* A   top++, evalstack(top) = R(A)  */
+	opPop    /* A   R(A) := evalstack(top), top-- */
+	opGetTop /* A   R(A) := evalstack(top) */
+	opCmp    /* A B C   R(A) = 1 if RK(B) > RK(C), 0 if RK(B) == RK(C), -1 if RK(B) < RK(C) */
+	opCmpEq  /* A B C R(A) = 1 if RK(B) == RK(C), else 0 */
+	opCmpNe  /* A B C R(A) = 1 if RK(B) != RK(C), else 0 */
+	opCmpGt  /* A B C R(A) = 1 if RK(B) > RK(C), else 0 */
+	opCmpLt  /* A B C R(A) = 1 if RK(B) < RK(C), else 0 */
 
 	NUM_OPCODES
 )
@@ -182,8 +182,6 @@ const (
 	listItemsPerFlush = 50 // # list items to accumulate before a setList instruction
 )
 
-
-
 func opmode(t, a, b, c, m int) byte { return byte(t<<7 | a<<6 | b<<4 | c<<2 | m) }
 
 const (
@@ -202,37 +200,37 @@ func testTMode(m opCode) bool { return opModes[m]&(1<<7) != 0 }
 /* this bit 1 means constant (0 means register) */
 const BITRK = 1 << (SIZE_B - 1)
 
-// t means is-test-opcode
+// t means is-test-opcode, eg. TEST or TESTSET 因为TEST和TESTSET指令后一般紧跟着一个JMP指令
 var opModes []byte = []byte{
 	//     T  A    B       C     mode		    opcode
-	opmode(0, 1, opArgR, opArgN, iABC),  // opMove
-	opmode(0, 1, opArgK, opArgN, iABx),  // opLoadConstant
-	opmode(0, 1, opArgN, opArgN, iABx),  // opLoadConstantEx
-	opmode(0, 1, opArgU, opArgU, iABC),  // opLoadBool
-	opmode(0, 1, opArgU, opArgN, iABC),  // opLoadNil
-	opmode(0, 1, opArgU, opArgN, iABC),  // opGetUpValue
-	opmode(0, 1, opArgU, opArgK, iABC),  // opGetTableUp
-	opmode(0, 1, opArgR, opArgK, iABC),  // opGetTable
-	opmode(0, 0, opArgK, opArgK, iABC),  // opSetTableUp
-	opmode(0, 0, opArgU, opArgN, iABC),  // opSetUpValue
-	opmode(0, 0, opArgK, opArgK, iABC),  // opSetTable
-	opmode(0, 1, opArgU, opArgU, iABC),  // opNewTable
-	opmode(0, 1, opArgR, opArgK, iABC),  // opSelf
-	opmode(0, 1, opArgK, opArgK, iABC),  // opAdd
-	opmode(0, 1, opArgK, opArgK, iABC),  // opSub
-	opmode(0, 1, opArgK, opArgK, iABC),  // opMul
-	opmode(0, 1, opArgK, opArgK, iABC),  // opMod
-	opmode(0, 1, opArgK, opArgK, iABC),  // opPow
-	opmode(0, 1, opArgK, opArgK, iABC),  // opDiv
-	opmode(0, 1, opArgK, opArgK, iABC),  // opIdiv
+	opmode(0, 1, opArgR, opArgN, iABC), // opMove
+	opmode(0, 1, opArgK, opArgN, iABx), // opLoadConstant
+	opmode(0, 1, opArgN, opArgN, iABx), // opLoadConstantEx
+	opmode(0, 1, opArgU, opArgU, iABC), // opLoadBool
+	opmode(0, 1, opArgU, opArgN, iABC), // opLoadNil
+	opmode(0, 1, opArgU, opArgN, iABC), // opGetUpValue
+	opmode(0, 1, opArgU, opArgK, iABC), // opGetTableUp
+	opmode(0, 1, opArgR, opArgK, iABC), // opGetTable
+	opmode(0, 0, opArgK, opArgK, iABC), // opSetTableUp
+	opmode(0, 0, opArgU, opArgN, iABC), // opSetUpValue
+	opmode(0, 0, opArgK, opArgK, iABC), // opSetTable
+	opmode(0, 1, opArgU, opArgU, iABC), // opNewTable
+	opmode(0, 1, opArgR, opArgK, iABC), // opSelf
+	opmode(0, 1, opArgK, opArgK, iABC), // opAdd
+	opmode(0, 1, opArgK, opArgK, iABC), // opSub
+	opmode(0, 1, opArgK, opArgK, iABC), // opMul
+	opmode(0, 1, opArgK, opArgK, iABC), // opMod
+	opmode(0, 1, opArgK, opArgK, iABC), // opPow
+	opmode(0, 1, opArgK, opArgK, iABC), // opDiv
+	opmode(0, 1, opArgK, opArgK, iABC), // opIdiv
 	opmode(0, 1, opArgK, opArgK, iABC), // opBand
 	opmode(0, 1, opArgK, opArgK, iABC), // opBor
 	opmode(0, 1, opArgK, opArgK, iABC), // opBxor
 	opmode(0, 1, opArgK, opArgK, iABC), // opShl
 	opmode(0, 1, opArgK, opArgK, iABC), // opShr
-	opmode(0, 1, opArgR, opArgN, iABC),  // opUnaryMinus
-	opmode(0, 1, opArgR, opArgN, iABC),  // opBnot
-	opmode(0, 1, opArgR, opArgN, iABC),  // opNot
+	opmode(0, 1, opArgR, opArgN, iABC), // opUnaryMinus
+	opmode(0, 1, opArgR, opArgN, iABC), // opBnot
+	opmode(0, 1, opArgR, opArgN, iABC), // opNot
 
 	opmode(0, 1, opArgR, opArgN, iABC),  // opLength
 	opmode(0, 1, opArgR, opArgR, iABC),  // opConcat
@@ -314,7 +312,6 @@ var Opcounts = []int{
 	3, // CMP_LT
 }
 
-
 const (
 	LIMIT_STACKIDX    = 1
 	LIMIT_UPVALUE     = 2
@@ -336,7 +333,6 @@ const (
 	OPP_ARG   = 6
 	OPP_C_ARG = 7
 )
-
 
 type OpPos int
 
