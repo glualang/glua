@@ -89,8 +89,7 @@ type exprDesc struct {
 	table     int // register or upvalue
 	tableType int // whether 'table' is register (kindLocal) or upvalue (kindUpValue)
 	info      int
-	// t代表to, f代表from， f表示这个表达式计算完成后目标是回到e.f(比如c = a + b在a+b整个指令块计算完成后都要做赋值给c的操作)
-	// t代表此表达式的下一步是否跳转以及跳转目标是哪条指令
+	// t代表true, f代表false， 这个条件表达式为true/false时跳转的目标
 	t, f      int // patch lists for 'exit when true/false'
 	value     float64
 	intValue  int64
@@ -878,9 +877,9 @@ func (f *function) GoIfTrue(e exprDesc) exprDesc {
 		// 如果{e}是真值，则R(A) = e.info,否则跳过下一条指令
 		pc = f.jumpOnCondition(e, 0) // pc是生成的最后一个JMP指令的索引. 而最后一个JMP指令的目标是这块指令在{e}为真后跳转的目标位置
 	}
-	e.f = f.Concatenate(e.f, pc) // 本表达式被使用时，如果是跳转来的，跳转来源是 e.f和pc合并JMP后的结果
+	e.f = f.Concatenate(e.f, pc) // 表达式整体为false时跳转的目标是pc跳转的目标
 	f.PatchToHere(e.t) // 生成一个label，用来作为刚生成的JMP指令的跳转目标. 因为刚生成的JMP指令的目标还没填
-	e.t = noJump
+	e.t = noJump // 表达式为true时不跳转
 	return e
 }
 
@@ -898,7 +897,6 @@ func (f *function) GoIfFalse(e exprDesc) exprDesc {
 	default:
 		pc = f.jumpOnCondition(e, 1)
 	}
-	// TODO: 这里需要加上注释
 	e.t = f.Concatenate(e.t, pc)
 	f.PatchToHere(e.f)
 	e.f = noJump
