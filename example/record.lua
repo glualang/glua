@@ -49,3 +49,8 @@ let f5: (a: int, b: Person2) => int = function(a: int, b: Person2)
     return a
 end
 let f6: State = Person2()
+
+let b1 = a and 5
+print('b1=', b1)
+let b2 = a or 5
+print('b2=', b2)

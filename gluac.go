@@ -20,7 +20,8 @@ const (
 
 func isNoArgsCommand(cmdType commandType) bool {
 	switch cmdType {
-	case SHOW_HELP_COMMAND: return true
+	case SHOW_HELP_COMMAND:
+		return true
 	default:
 		return false
 	}
@@ -94,7 +95,7 @@ func programMain() (err error) {
 	return
 }
 
-func main()  {
+func main() {
 	err := programMain()
 	if err != nil {
 		log.Println(err)
