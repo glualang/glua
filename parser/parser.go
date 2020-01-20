@@ -369,6 +369,7 @@ func (p *parser) assignment(t *assignmentTarget, variableCount int) {
 			if p.function.AdjustAssignment(variableCount, n, e); n > variableCount {
 				p.function.freeRegisterCount -= n - variableCount // remove extra values
 			}
+			// TODO: variableCount个变量的赋值语句，需要调用typeChecker.AddAssignConstraint
 		} else {
 			p.function.StoreVariable(t.exprDesc, p.function.SetReturn(e))
 			return // avoid default

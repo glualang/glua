@@ -143,7 +143,7 @@ type function struct {
 	p                   *parser
 	block               *block
 	jumpPC, lastTarget  int
-	freeRegisterCount   int
+	freeRegisterCount   int // 使用中的寄存器数量
 	activeVariableCount int
 	firstLocal          int
 }
@@ -599,11 +599,13 @@ func (f *function) CheckStack(n int) {
 	}
 }
 
+// 分配{n}个寄存器，用来在接下来使用
 func (f *function) ReserveRegisters(n int) {
 	f.CheckStack(n)
 	f.freeRegisterCount += n
 }
 
+// 释放一个寄存器（一定从最顶部的寄存器开始释放）
 func (f *function) freeRegister(r int) {
 	if !isConstant(r) && r >= f.activeVariableCount {
 		f.freeRegisterCount--
@@ -611,6 +613,7 @@ func (f *function) freeRegister(r int) {
 	}
 }
 
+// 表达式处理完了，释放占用的(寄存器)资源
 func (f *function) freeExpression(e exprDesc) {
 	if e.kind == kindNonRelocatable {
 		f.freeRegister(e.info)
@@ -641,6 +644,7 @@ func (f *function) SetReturn(e exprDesc) exprDesc {
 	return e
 }
 
+// 如果表达式是变量（局部变量，全局变量,upvalue变量，...等），把对这个变量的使用转变边不依赖变量名称的使用
 func (f *function) DischargeVariables(e exprDesc) exprDesc {
 	switch e.kind {
 	case kindLocal:
@@ -660,6 +664,7 @@ func (f *function) DischargeVariables(e exprDesc) exprDesc {
 	return e
 }
 
+// 把表达式转成结果存入指定寄存器{r}的指令（如果表达式使用了变量或者常量资源的话）
 func (f *function) dischargeToRegister(e exprDesc, r int) exprDesc {
 	switch e = f.DischargeVariables(e); e.kind {
 	case kindNil:
@@ -688,6 +693,7 @@ func (f *function) dischargeToRegister(e exprDesc, r int) exprDesc {
 	return e
 }
 
+// 把表达式转成结果存入新分配寄存器的指令（如果表达式使用了变量或者常量资源的话）
 func (f *function) dischargeToAnyRegister(e exprDesc) exprDesc {
 	if e.kind != kindNonRelocatable {
 		f.ReserveRegisters(1)
@@ -701,6 +707,7 @@ func (f *function) encodeLabel(a, b, jump int) int {
 	return f.EncodeABC(opLoadBool, a, b, jump)
 }
 
+// 把表达式转成结果存入指定寄存器{r}的指令（如果需要生成指令的话）
 func (f *function) expressionToRegister(e exprDesc, r int) exprDesc {
 	if e = f.dischargeToRegister(e, r); e.kind == kindJump {
 		e.t = f.Concatenate(e.t, e.info)
@@ -730,6 +737,7 @@ func (f *function) ExpressionToNextRegister(e exprDesc) exprDesc {
 	return f.expressionToRegister(e, f.freeRegisterCount-1)
 }
 
+// 把表达式转成结果存入新分配寄存器的指令（如果需要生成指令的话）
 func (f *function) ExpressionToAnyRegister(e exprDesc) exprDesc {
 	if e = f.DischargeVariables(e); e.kind == kindNonRelocatable {
 		if !e.hasJumps() {
@@ -784,6 +792,7 @@ func (f *function) expressionToRegisterOrConstant(e exprDesc) (exprDesc, int) {
 	return e, e.info
 }
 
+// 给变量分配新值的语句的指令生成
 func (f *function) StoreVariable(v, e exprDesc) {
 	switch v.kind {
 	case kindLocal:
@@ -911,6 +920,7 @@ func (f *function) Indexed(t, k exprDesc) (r exprDesc) {
 	return
 }
 
+// 编译器可以处理的常量表达式，比如 1 + 2这样的，编译器合并成改成单个常量
 func foldConstants(op opCode, e1, e2 exprDesc) (exprDesc, bool) {
 	if !e1.isNumeral() || !e2.isNumeral() {
 		return e1, false
@@ -928,6 +938,7 @@ func foldConstants(op opCode, e1, e2 exprDesc) (exprDesc, bool) {
 	return e1, true
 }
 
+// 数学运算表达式的指令生成
 func (f *function) encodeArithmetic(op opCode, e1, e2 exprDesc, line int) exprDesc {
 	if e, folded := foldConstants(op, e1, e2); folded {
 		return e
@@ -949,6 +960,7 @@ func (f *function) encodeArithmetic(op opCode, e1, e2 exprDesc, line int) exprDe
 	return e1
 }
 
+// 单元运算符的表达式的指令的生成，比如: -a, not a, #a, ~a
 func (f *function) Prefix(op int, e exprDesc, line int) exprDesc {
 	switch op {
 	case oprMinus:
@@ -971,6 +983,7 @@ func (f *function) Prefix(op int, e exprDesc, line int) exprDesc {
 	panic("unreachable")
 }
 
+// 二元运算符的表达式的预处理指令的生成，比如: a + b 先把参数都加载到寄存器
 func (f *function) Infix(op int, e exprDesc) exprDesc {
 	switch op {
 	case oprAnd:
@@ -989,6 +1002,7 @@ func (f *function) Infix(op int, e exprDesc) exprDesc {
 	return e
 }
 
+// 比较表达式的指令生产
 func (f *function) encodeComparison(op opCode, cond int, e1, e2 exprDesc) exprDesc {
 	e1, o1 := f.expressionToRegisterOrConstant(e1)
 	e2, o2 := f.expressionToRegisterOrConstant(e2)
@@ -1000,6 +1014,7 @@ func (f *function) encodeComparison(op opCode, cond int, e1, e2 exprDesc) exprDe
 	return makeExpression(kindJump, f.conditionalJump(op, cond, o1, o2))
 }
 
+// 表达式在处理完参数后的处理，比如 a + b在加载完参数后调用opcode计算结果存入寄存器
 func (f *function) Postfix(op int, e1, e2 exprDesc, line int) exprDesc {
 	switch op {
 	case oprAnd:
@@ -1071,6 +1086,7 @@ func (f *function) CheckConflict(t *assignmentTarget, e exprDesc) {
 	}
 }
 
+// 变量赋值语句的后续处理（比如变量数量比赋值的值的数量多，多出来的变量用nil值填充
 func (f *function) AdjustAssignment(variableCount, expressionCount int, e exprDesc) {
 	if extra := variableCount - expressionCount; e.hasMultipleReturns() {
 		if extra++; extra < 0 {

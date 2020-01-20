@@ -11,29 +11,37 @@ import (
 // 类型信息的约束
 type TypeInfoConstraint struct {
 	Name            string        // 变量名称
-	Line            int           // 使用地方在proto中的行数
+	Line            int           // 使用地方所在的代码行
 	UsingAsTypeInfo *TypeTreeItem // name被当成什么类型来使用。要求name的实际类型能和这个类型兼容，也就是需要name的类型是usingAsTypeInfo的子类型或者本身
 }
 
 type VariableType int
 
 const (
-	VAR_VARIABLE VariableType = iota // 可变类型变量
-	CONST_VARIABLE                   // 不可变类型变量
+	VAR_VARIABLE   VariableType = iota // 可变类型变量
+	CONST_VARIABLE                     // 不可变类型变量
 )
+
+// 修改变量的语句的约束
+type AssignConstraint struct {
+	Name          string        // 变量名称
+	Line          int           // 所在代码行
+	ValueTypeInfo *TypeTreeItem // 新的值的类型
+}
 
 // 类型信息作用域
 type TypeInfoScope struct {
-	StartLine int
-	EndLine int
+	StartLine         int
+	EndLine           int
 	Names             []string
-	NameLines         map[string]int // 变量申明时所在的proto的函数
-	NameDeclareTypes map[string]VariableType // 变量的变量类型，比如是可变变量还是不可变变量
-	VariableTypeInfos map[string]*TypeTreeItem  `json:"VariableTypeInfos,omitempty"`
-	Constraints       []*TypeInfoConstraint  `json:"Constraints,omitempty"` // 本词法作用域中的类型约束
+	NameLines         map[string]int           // 变量申明时所在的proto的函数
+	NameDeclareTypes  map[string]VariableType  // 变量的变量类型，比如是可变变量还是不可变变量
+	VariableTypeInfos map[string]*TypeTreeItem `json:"VariableTypeInfos,omitempty"`
+	Constraints       []*TypeInfoConstraint    `json:"Constraints,omitempty"`       // 本词法作用域中的类型约束
+	AssignConstraints []*AssignConstraint      `json:"AssignConstraints,omitempty"` // 本词法作用域中的变量赋值的约束
 
-	Children []*TypeInfoScope   `json:"Children,omitempty"` // 子作用域
-	Parent   *TypeInfoScope   `json:"-"` // 上级作用域
+	Children []*TypeInfoScope `json:"Children,omitempty"` // 子作用域
+	Parent   *TypeInfoScope   `json:"-"`                  // 上级作用域
 }
 
 func NewTypeInfoScope() *TypeInfoScope {
@@ -45,7 +53,6 @@ func NewTypeInfoScope() *TypeInfoScope {
 		Children:          nil,
 	}
 }
-
 
 func (scope *TypeInfoScope) add(name string, item *TypeTreeItem, line int, varType VariableType) {
 	scope.Names = append(scope.Names, name)
@@ -151,9 +158,17 @@ func (checker *TypeChecker) AddVariable(name string, item *TypeTreeItem, line in
 
 func (checker *TypeChecker) AddConstraint(name string, usingAsTypeInfo *TypeTreeItem, line int) {
 	checker.CurrentProtoScope.Constraints = append(checker.CurrentProtoScope.Constraints, &TypeInfoConstraint{
-		Name: name,
-		Line: line,
+		Name:            name,
+		Line:            line,
 		UsingAsTypeInfo: usingAsTypeInfo,
+	})
+}
+
+func (checker *TypeChecker) AddAssignConstraint(name string, valueTypeInfo *TypeTreeItem, line int) {
+	checker.CurrentProtoScope.AssignConstraints = append(checker.CurrentProtoScope.AssignConstraints, &AssignConstraint{
+		Name:          name,
+		Line:          line,
+		ValueTypeInfo: valueTypeInfo,
 	})
 }
 
