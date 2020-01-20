@@ -89,6 +89,8 @@ type exprDesc struct {
 	table     int // register or upvalue
 	tableType int // whether 'table' is register (kindLocal) or upvalue (kindUpValue)
 	info      int
+	// t代表to, f代表from， f表示这个表达式计算完成后目标是回到e.f(比如c = a + b在a+b整个指令块计算完成后都要做赋值给c的操作)
+	// t代表此表达式的下一步是否跳转以及跳转目标是哪条指令
 	t, f      int // patch lists for 'exit when true/false'
 	value     float64
 	intValue  int64
@@ -848,39 +850,47 @@ func (f *function) invertJump(pc int) {
 	i.setA(not(i.a()))
 }
 
-// 生成如果{e}表达式不匹配cond(一般是1 真或者0 假),就跳转到e.info，否则继续执行的指令. 对应TEST/TESTSET指令
+// 生成如果{e}表达式不匹配cond(一般是1 真或者0 假),就R(A) = e.info，否则跳过下一条指令. 对应TEST/TESTSET指令
 func (f *function) jumpOnCondition(e exprDesc, cond int) int {
 	if e.kind == kindRelocatable {
 		if i := f.Instruction(e); i.opCode() == opNot {
 			f.dropLastInstruction() // remove previous opNot
+			// 生成TEST指令和接着的JMP指令
 			return f.conditionalJump(opTest, i.b(), 0, not(cond))
 		}
 	}
 	e = f.dischargeToAnyRegister(e)
 	f.freeExpression(e)
+	// 生成 TESTSET指令和接着的JMP指令
 	return f.conditionalJump(opTestSet, noRegister, e.info, cond)
 }
 
-// 生成如果{e}表达式是真值，就继续执行的指令
+// 生成如果{e}表达式是真值，就跳转到目标位置(根据e类型和e.info来确定)的指令
+// 生成的指令对应伪代码类似. if e then e.info else pc++
 func (f *function) GoIfTrue(e exprDesc) exprDesc {
-	pc := noJump
+	pc := noJump // pc保存在{e}为真时下一步指令的位置. 也就是{e}为真就跳转到这个{pc}位置
 	switch e = f.DischargeVariables(e); e.kind {
 	case kindJump:
 		f.invertJump(e.info)
 		pc = e.info
 	case kindConstant, kindInt, kindNumber, kindTrue:
 	default:
-		// 如果{e}是真值，则跳转到e.info,否则继续执行下一条指令
-		pc = f.jumpOnCondition(e, 0) // pc是生成的最后一个JMP指令的索引
+		// 如果{e}是真值，则R(A) = e.info,否则跳过下一条指令
+		pc = f.jumpOnCondition(e, 0) // pc是生成的最后一个JMP指令的索引. 而最后一个JMP指令的目标是这块指令在{e}为真后跳转的目标位置
 	}
-	e.f = f.Concatenate(e.f, pc)
-	f.PatchToHere(e.t) // 生成一个label，用来作为刚生成的JMP指令的跳转目标
+	e.f = f.Concatenate(e.f, pc) // 本表达式被使用时，如果是跳转来的，跳转来源是 e.f和pc合并JMP后的结果
+	f.PatchToHere(e.t) // 生成一个label，用来作为刚生成的JMP指令的跳转目标. 因为刚生成的JMP指令的目标还没填
 	e.t = noJump
 	return e
 }
 
+// 生成如果{e}表达式是假值，就跳转到目标位置(根据e类型和e.info来确定)的指令
+// 生成的指令对应伪代码类似:
+// 指令1: 检查 {e} 是否为假，如果{e}是假值，则R(A)=e.info，否则跳过下一条指令
+// 指令2: JMP {占位符}, 跳转目标是{e}为假时的处理逻辑
+// 指令3: {e}为真时的处理逻辑
 func (f *function) GoIfFalse(e exprDesc) exprDesc {
-	pc := noJump
+	pc := noJump // pc指向注释中的指令2
 	switch e = f.DischargeVariables(e); e.kind {
 	case kindJump:
 		pc = e.info
@@ -888,6 +898,7 @@ func (f *function) GoIfFalse(e exprDesc) exprDesc {
 	default:
 		pc = f.jumpOnCondition(e, 1)
 	}
+	// TODO: 这里需要加上注释
 	e.t = f.Concatenate(e.t, pc)
 	f.PatchToHere(e.f)
 	e.f = noJump
@@ -1037,7 +1048,7 @@ func (f *function) Postfix(op int, e1, e2 exprDesc, line int) exprDesc {
 	case oprAnd:
 		f.assert(e1.t == noJump)
 		e2 = f.DischargeVariables(e2)
-		e2.f = f.Concatenate(e2.f, e1.f)
+		e2.f = f.Concatenate(e2.f, e1.f) // a and b 表达式，b部分的结果是给a的来源的.也就是把e2.f也设置为e1.f，也就是e.f。表达式作为一个整体，计算完成后结果交给e.f
 		return e2
 	case oprOr:
 		f.assert(e1.f == noJump)

@@ -282,9 +282,11 @@ func binaryOp(op rune) int {
 	return oprNoBinary
 }
 
+// 因为lua5.3增加了几个操作符，优先级这里需要修改
+// 需要和oprAdd等值顺序一致
 var priority []struct{ left, right int } = []struct{ left, right int }{
-	{6, 6}, {6, 6}, {7, 7}, {7, 7}, {7, 7}, // `+' `-' `*' `/' `%'
-	{10, 9}, {5, 4}, // ^, .. (right associative)
+	{6, 6}, {6, 6}, {7, 7}, {7, 7}, {7, 7}, {7, 7}, {7, 7}, // `+' `-' `*' '%', pow, `/' '//'
+	{7, 7}, {7, 7}, {10, 9}, {7, 7}, {7, 7}, {5, 4}, // band, bor, ^, <<, >>, .. (right associative)
 	{3, 3}, {3, 3}, {3, 3}, // ==, <, <=
 	{3, 3}, {3, 3}, {3, 3}, // ~=, >, >=
 	{2, 2}, {1, 1}, // and, or
@@ -672,10 +674,11 @@ func (p *parser) localStatement(varDeclareType VariableType) {
 	for first := true; first || p.testNext(','); v++ {
 		varName := p.checkName()
 		varNameLine := p.lineNumber
+		varType := objectTypeTreeItem
 		if p.testNext(':') {
-			varType := p.checkType()
-			p.typeChecker.AddVariable(varName, varType, varNameLine, varDeclareType)
+			varType = p.checkType()
 		}
+		p.typeChecker.AddVariable(varName, varType, varNameLine, varDeclareType)
 		p.function.MakeLocalVariable(varName)
 		first = false
 		varNameList = append(varNameList, varName)
