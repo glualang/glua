@@ -89,7 +89,7 @@ type exprDesc struct {
 	table     int // register or upvalue
 	tableType int // whether 'table' is register (kindLocal) or upvalue (kindUpValue)
 	info      int
-	// t代表true, f代表false， 这个条件表达式为true/false时跳转的目标
+	// t代表true, f代表false， 这个在TEST/TESTSET等条件表达式为true/false时跳转的目标
 	t, f      int // patch lists for 'exit when true/false'
 	value     float64
 	intValue  int64
@@ -733,7 +733,7 @@ func (f *function) expressionToRegister(e exprDesc, r int) exprDesc {
 				jump = f.Jump()
 			}
 			loadFalse, loadTrue = f.encodeLabel(r, 0, 1), f.encodeLabel(r, 1, 0)
-			f.PatchToHere(jump)
+			f.PatchToHere(jump) // 填充上一个未填充的JMP指令跳转到这里
 		}
 		end := f.Label()
 		f.patchListHelper(e.f, end, r, loadFalse)
@@ -877,9 +877,9 @@ func (f *function) GoIfTrue(e exprDesc) exprDesc {
 		// 如果{e}是真值，则R(A) = e.info,否则跳过下一条指令
 		pc = f.jumpOnCondition(e, 0) // pc是生成的最后一个JMP指令的索引. 而最后一个JMP指令的目标是这块指令在{e}为真后跳转的目标位置
 	}
-	e.f = f.Concatenate(e.f, pc) // 表达式整体为false时跳转的目标是pc跳转的目标
+	e.f = f.Concatenate(e.f, pc) // TEST为false时(也就是条件判断为true时)跳转的目标是pc跳转的目标
 	f.PatchToHere(e.t) // 生成一个label，用来作为刚生成的JMP指令的跳转目标. 因为刚生成的JMP指令的目标还没填
-	e.t = noJump // 表达式为true时不跳转
+	e.t = noJump // 表达式内部已经处理完了e.t时的跳转，这里不再需要跳转了.
 	return e
 }
 
@@ -1046,12 +1046,12 @@ func (f *function) Postfix(op int, e1, e2 exprDesc, line int) exprDesc {
 	case oprAnd:
 		f.assert(e1.t == noJump)
 		e2 = f.DischargeVariables(e2)
-		e2.f = f.Concatenate(e2.f, e1.f) // a and b 表达式，b部分的结果是给a的来源的.也就是把e2.f也设置为e1.f，也就是e.f。表达式作为一个整体，计算完成后结果交给e.f
+		e2.f = f.Concatenate(e2.f, e1.f) // e2表达式在false跳转时跳转到e1的false跳转.
 		return e2
 	case oprOr:
 		f.assert(e1.f == noJump)
 		e2 = f.DischargeVariables(e2)
-		e2.t = f.Concatenate(e2.t, e1.t)
+		e2.t = f.Concatenate(e2.t, e1.t) // e2表达式在true跳转时跳转到e1的true跳转.
 		return e2
 	case oprConcat:
 		if e2 = f.ExpressionToValue(e2); e2.kind == kindRelocatable && f.Instruction(e2).opCode() == opConcat {
