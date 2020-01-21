@@ -164,6 +164,7 @@ func (p *parser) primaryExpression() (e exprDesc) {
 	return
 }
 
+// 可能有后缀的表达式的解析
 func (p *parser) suffixedExpression() exprDesc {
 	line := p.lineNumber
 	e := p.primaryExpression()
@@ -362,6 +363,7 @@ func (p *parser) assignment(t *assignmentTarget, variableCount int) {
 	if p.checkCondition(t.isVariable(), "syntax error"); p.testNext(',') {
 		e := p.suffixedExpression()
 		if e.kind != kindIndexed {
+			// a, b = ... 这类表达式，b的表达式类型需要受约束
 			p.function.CheckConflict(t, e)
 		}
 		p.checkLimit(variableCount+p.nestedGoCallCount, maxCallCount, "Go levels")

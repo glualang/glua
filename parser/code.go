@@ -412,6 +412,7 @@ func (f *function) loadNil(from, n int) {
 	f.EncodeABC(opLoadNil, from, n-1, 0)
 }
 
+// 把之前构建中的jmp指令加入proto中. 生成指令
 func (f *function) Jump() int {
 	f.assert(f.isJumpListWalkable(f.jumpPC))
 	jumpPC := f.jumpPC
@@ -440,11 +441,13 @@ func (f *function) Return(e exprDesc, resultCount int) {
 	}
 }
 
+// 有条件跳转指令的生成。比如TEST/TESTSET指令后跟着JMP指令等
 func (f *function) conditionalJump(op opCode, a, b, c int) int {
 	f.EncodeABC(op, a, b, c)
 	return f.Jump()
 }
 
+// 把pc位置的JMP指令的跳转目标改成dest位置的指令
 func (f *function) fixJump(pc, dest int) {
 	f.assert(f.isJumpListWalkable(pc))
 	f.assert(dest != noJump)
@@ -470,6 +473,7 @@ func (f *function) jump(pc int) int {
 	return noJump
 }
 
+// list这个jump列表是否是一个合法的连续jmp指令列表或者空jmp list
 func (f *function) isJumpListWalkable(list int) bool {
 	if list == noJump {
 		return true
@@ -490,6 +494,7 @@ func (f *function) jumpControl(pc int) *instruction {
 	return &f.f.code[pc]
 }
 
+// jmp list是否有未完成的jmp指令需要填入值的
 func (f *function) needValue(list int) bool {
 	f.assert(f.isJumpListWalkable(list))
 	for ; list != noJump; list = f.jump(list) {
@@ -500,6 +505,7 @@ func (f *function) needValue(list int) bool {
 	return false
 }
 
+// 如果node是TEST/TESTSET指令后的JMP指令，用这个方法给之前的TEST/TESTSET指令设置为填完的op arg
 func (f *function) patchTestRegister(node, register int) bool {
 	if i := f.jumpControl(node); i.opCode() != opTestSet {
 		return false
@@ -518,6 +524,7 @@ func (f *function) removeValues(list int) {
 	}
 }
 
+// 把jmp list {list}中各jmp指令的跳转目标改成target. register是说明R(register)开始的寄存器要被关闭(因为生命周期结束了)
 func (f *function) patchListHelper(list, target, register, defaultTarget int) {
 	f.assert(f.isJumpListWalkable(list))
 	for list != noJump {
@@ -537,6 +544,7 @@ func (f *function) dischargeJumpPC() {
 	f.jumpPC = noJump
 }
 
+// 把未完成的jmp list {list} 指向{target}位置的指令(会在target位置生成新label)
 func (f *function) PatchList(list, target int) {
 	if target == len(f.f.code) {
 		f.PatchToHere(list)
@@ -546,6 +554,8 @@ func (f *function) PatchList(list, target int) {
 	}
 }
 
+// 把未完成的jmp list {list}，依次用level开始的指令作为jmp list的级别(级别影响jmp后关闭哪些upvalues)
+// 在离开一个块作用域的时候需要调用
 func (f *function) PatchClose(list, level int) {
 	f.assert(f.isJumpListWalkable(list))
 	for level, next := level+1, 0; list != noJump; list = next {
@@ -555,6 +565,7 @@ func (f *function) PatchClose(list, level int) {
 	}
 }
 
+// 在当前位置生成新label，并把未完成的jmp list {list}执行此label
 func (f *function) PatchToHere(list int) {
 	f.assert(f.isJumpListWalkable(list))
 	f.assert(f.isJumpListWalkable(f.jumpPC))
@@ -637,6 +648,7 @@ func (f *function) stringConstant(s string) int { return f.addConstant(s, s) }
 func (f *function) booleanConstant(b bool) int  { return f.addConstant(b, b) }
 func (f *function) nilConstant() int            { return f.addConstant(f, nil) }
 
+// 返回多个结果的return指令的生成
 func (f *function) setReturns(e exprDesc, resultCount int) {
 	if e.kind == kindCall {
 		f.Instruction(e).setC(resultCount + 1)
@@ -647,6 +659,7 @@ func (f *function) setReturns(e exprDesc, resultCount int) {
 	}
 }
 
+// 返回单个结果的return指令的生成
 func (f *function) SetReturn(e exprDesc) exprDesc {
 	if e.kind == kindCall {
 		e.kind, e.info = kindNonRelocatable, f.Instruction(e).a()
@@ -843,6 +856,8 @@ func (f *function) Self(e, key exprDesc) exprDesc {
 	return result
 }
 
+// JMP A sBx   pc+=sBx; if (A) close all upvalues >= R(A - 1)
+// 反转JMP语句的A操作符（是否关闭所有 >= R(a-1)的upvalues)
 func (f *function) invertJump(pc int) {
 	i := f.jumpControl(pc)
 	lua_assert(testTMode(i.opCode()) && i.opCode() != opTestSet && i.opCode() != opTest)
@@ -932,6 +947,7 @@ func (f *function) encodeBnot(e exprDesc) exprDesc {
 	return f.encodeLikeNot(e, opBnot)
 }
 
+// 返回在t(是一个table)中按k作为名称查询到的value的表达式，比如t.k, t[k], 全局变量k(相当于_ENV[k])等
 func (f *function) Indexed(t, k exprDesc) (r exprDesc) {
 	f.assert(!t.hasJumps())
 	r = makeExpression(kindIndexed, 0)
@@ -1071,8 +1087,10 @@ func (f *function) Postfix(op int, e1, e2 exprDesc, line int) exprDesc {
 	panic("unreachable")
 }
 
+// 记录上一条新生成的指令对应的源码行号信息
 func (f *function) FixLine(line int) { f.f.lineInfo[len(f.f.code)-1] = int32(line) }
 
+// SETLIST A B C   R(A)[(C-1)*FPF+i] := R(A+i), 1 <= i <= B. 把从R(A+1)开始的B个值写入R(A)数组，写入索引从C开始依次递增
 func (f *function) setList(base, elementCount, storeCount int) {
 	if f.assert(storeCount != 0); storeCount == MultipleReturns {
 		storeCount = 0
@@ -1088,27 +1106,32 @@ func (f *function) setList(base, elementCount, storeCount int) {
 	f.freeRegisterCount = base + 1
 }
 
+// 赋值操作中，比如 a, b, c, d = 1, 2, 3, 4 这类中，{t}代表a,b,c等左侧被赋值表达式的列表，{e}
 func (f *function) CheckConflict(t *assignmentTarget, e exprDesc) {
 	extra, conflict := f.freeRegisterCount, false
 	for ; t != nil; t = t.previous {
 		if t.kind == kindIndexed {
 			if t.tableType == e.kind && t.table == e.info {
+				// a.age, a = v1, v2 这种语句是有冲突的
 				conflict = true
 				t.table, t.tableType = extra, kindLocal
 			}
 			if e.kind == kindLocal && t.index == e.info {
+				// a[b], b = v1, v2 这种语句也冲突
 				conflict = true
 				t.index = extra
 			}
 		}
 	}
 	if conflict {
+		// 冲突时就把一个a,b=v1, v2语句拆分成多个语句，而不能直接一个setlist指令处理，避免出现歧义或者死循环等BUG
+		// a[b], b = v1, v2 这种语句拆分成  R(extra) := b; a[extra], b = v1, v2
 		if e.kind == kindLocal {
 			f.EncodeABC(opMove, extra, e.info, 0)
 		} else {
 			f.EncodeABC(opGetUpValue, extra, e.info, 0)
 		}
-		f.ReserveRegisters(1)
+		f.ReserveRegisters(1) // 多用了一个extra的寄存器
 	}
 }
 
@@ -1133,12 +1156,15 @@ func (f *function) AdjustAssignment(variableCount, expressionCount int, e exprDe
 	}
 }
 
+// 在proto的upvalues区域增加新upvalue
 func (f *function) makeUpValue(name string, e exprDesc) int {
 	f.p.checkLimit(len(f.f.upValues)+1, maxUpValue, "upvalues")
 	f.f.upValues = append(f.f.upValues, upValueDesc{name: name, isLocal: e.kind == kindLocal, index: e.info})
 	return len(f.f.upValues) - 1
 }
 
+// 访问变量的辅助函数，可能是访问局部变量，访问upvalue变量，创建新upvalue对象（如果往上找不到此名称的upvalue)
+// @param base 是否只当成局部变量或者现有upvalue使用。如果base是false，则可能把此变量当成自由变量使用
 func singleVariableHelper(f *function, name string, base bool) (e exprDesc, found bool) {
 	owningBlock := func(b *block, level int) *block {
 		for b.activeVariableCount > level {
