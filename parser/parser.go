@@ -17,18 +17,32 @@ type parser struct {
 
 	typeChecker *TypeChecker
 
-	isCapturingExprList bool       // 是否开始采集表达式列表
-	capturingExprList   []exprDesc // 采集到的表达式列表
+	// 采集到的表达式列表，可以start多次采集表达式列表（压栈）。stop采集的时候移除顶层。push新采集值时每层采集列表都要增加这个值
+	capturingExprListStack   [][]exprDesc
+}
+
+func (p * parser) captureExprValue(value exprDesc) {
+	for i := 0; i< len(p.capturingExprListStack); i++ {
+		p.capturingExprListStack[i] = append(p.capturingExprListStack[i], value)
+	}
+}
+
+func (p *parser) isCapturingExprList() bool {
+	return len(p.capturingExprListStack) > 0
 }
 
 func (p *parser) startCaptureExprList() {
-	p.isCapturingExprList = true
+	// 开始新的一层capturingExprList
+	p.capturingExprListStack = append(p.capturingExprListStack, make([]exprDesc, 0))
 }
 
 func (p *parser) StopCaptureExprList() []exprDesc {
-	p.isCapturingExprList = false
-	saved := p.capturingExprList
-	p.capturingExprList = nil
+	if !p.isCapturingExprList() {
+		return nil
+	}
+	stackSize := len(p.capturingExprListStack)
+	saved := p.capturingExprListStack[stackSize-1]
+	p.capturingExprListStack = p.capturingExprListStack[0:(stackSize-1)]
 	return saved
 }
 
@@ -320,8 +334,8 @@ func (p *parser) subExpression(limit int) (e exprDesc, op int) {
 
 func (p *parser) expression() (e exprDesc) {
 	e, _ = p.subExpression(0)
-	if p.isCapturingExprList {
-		p.capturingExprList = append(p.capturingExprList, e)
+	if p.isCapturingExprList() {
+		p.captureExprValue(e)
 	}
 	return
 }
@@ -370,13 +384,36 @@ func (p *parser) assignment(t *assignmentTarget, variableCount int) {
 		p.assignment(&assignmentTarget{previous: t, exprDesc: e}, variableCount+1)
 	} else {
 		p.checkNext('=')
+		saveAssignConstraint := func (valueList exprDesc, capturedExprList []exprDesc) {
+			// variableCount个变量的赋值语句，需要调用typeChecker.AddAssignConstraint
+			targetList := t.exprList()
+			for i, nameExpr := range targetList {
+				// 暂时只处理左侧是单符号局部变量或者自由变量的情况
+				if (nameExpr.kind != kindLocal && nameExpr.kind != kindUpValue) || len(nameExpr.symbol) < 1 {
+					continue
+				}
+				symbol := nameExpr.symbol
+				if i>=len(capturedExprList) {
+					// 暂时不考虑右侧值比赋值的变量少的情况
+					continue
+				}
+				rightValue := capturedExprList[i]
+				rightValueMaybeType := p.typeChecker.deriveExprType(rightValue)
+				p.typeChecker.AddAssignConstraint(symbol, rightValueMaybeType, p.lineNumber)
+			}
+		}
+		p.startCaptureExprList()
+		var capturedExprList []exprDesc // = 右侧的表达式列表
 		if e, n := p.expressionList(); n != variableCount {
+			capturedExprList = p.StopCaptureExprList()
 			if p.function.AdjustAssignment(variableCount, n, e); n > variableCount {
 				p.function.freeRegisterCount -= n - variableCount // remove extra values
 			}
-			// TODO: variableCount个变量的赋值语句，需要调用typeChecker.AddAssignConstraint
+			saveAssignConstraint(e, capturedExprList)
 		} else {
+			capturedExprList = p.StopCaptureExprList()
 			p.function.StoreVariable(t.exprDesc, p.function.SetReturn(e))
+			saveAssignConstraint(e, capturedExprList)
 			return // avoid default
 		}
 	}
@@ -687,12 +724,12 @@ func (p *parser) localStatement(varDeclareType VariableType) {
 		varNameLines[varName] = varNameLine
 	}
 	if p.testNext('=') {
-		p.startCaptureExprList()
-		defer p.StopCaptureExprList()
+		p.startCaptureExprList() // 开启采集表达式
 		e, n := p.expressionList()
 		p.function.AdjustAssignment(v, n, e)
 		// 局部变量初始化，需要在type checker中增加约束
-		assignedExprList := p.capturingExprList
+		assignedExprList := p.StopCaptureExprList() // 关闭采集表达式
+
 		checkParamsCount := len(varNameList)
 		if checkParamsCount > len(assignedExprList) {
 			checkParamsCount = len(assignedExprList)

@@ -54,3 +54,8 @@ let b1 = a and 5
 print('b1=', b1)
 let b2 = a or 5
 print('b2=', b2)
+
+var c1 = 1
+var c2: int = 2
+c1, c2 = 3, '4'
+print('c1=', c1, ', c2=', c2)

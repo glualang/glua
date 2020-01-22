@@ -209,14 +209,31 @@ func (scope *TypeInfoScope) Validate() (warnings []error, errs []error) {
 		varDeclareType = scope.resolve(varDeclareType)
 		usingAsTypeInfo = scope.resolve(usingAsTypeInfo)
 
-		log.Println(varName)
 		if !IsTypeAssignable(usingAsTypeInfo, varDeclareType) {
 			warnings = append(warnings, fmt.Errorf("variable %s declared as %s but got %s at line %d",
 				varName, varDeclareType.String(), usingAsTypeInfo.String(), constraint.Line))
 			continue
 		}
 	}
-	// TODO: 找出对变量重新赋值的语句，检查类型和是否const变量
+	// 找出对变量重新赋值的语句，检查类型和是否const变量
+	for _, constraint := range scope.AssignConstraints {
+		varName := constraint.Name
+		varDeclareType, _, _, ok := scope.get(varName)
+		usingAsTypeInfo := constraint.ValueTypeInfo
+		if !ok {
+			warnings = append(warnings, fmt.Errorf("can't find variable %s at line %d", varName, constraint.Line))
+			continue
+		}
+		varDeclareType = scope.resolve(varDeclareType)
+		usingAsTypeInfo = scope.resolve(usingAsTypeInfo)
+
+		if !IsTypeAssignable(usingAsTypeInfo, varDeclareType) {
+			warnings = append(warnings, fmt.Errorf("variable %s declared as %s but got %s at line %d",
+				varName, varDeclareType.String(), usingAsTypeInfo.String(), constraint.Line))
+			continue
+		}
+	}
+
 	for _, child := range scope.Children {
 		subWarnings, subErrors := child.Validate()
 		warnings = append(warnings, subWarnings...)

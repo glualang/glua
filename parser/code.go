@@ -124,6 +124,15 @@ type assignmentTarget struct {
 	exprDesc
 }
 
+func (target *assignmentTarget) exprList() []exprDesc {
+	var result []exprDesc
+	for cur := target;cur!=nil;cur = cur.previous {
+		tmp := []exprDesc{cur.exprDesc}
+		result = append(tmp, result...)
+	}
+	return result
+}
+
 type label struct {
 	name                string
 	pc, line            int
