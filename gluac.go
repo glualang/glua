@@ -5,8 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/zoowii/gluac/assembler"
-	"github.com/zoowii/gluac/parser"
+	"github.com/glualang/gluac/assembler"
+	"github.com/glualang/gluac/parser"
 	"log"
 	"os"
 )

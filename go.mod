@@ -1,3 +1,3 @@
-module github.com/zoowii/gluac
+module github.com/glualang/gluac
 
 go 1.13

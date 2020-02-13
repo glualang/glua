@@ -2,7 +2,7 @@ package assembler
 
 import (
 	"errors"
-	"github.com/zoowii/gluac/parser"
+	"github.com/glualang/gluac/parser"
 	"strconv"
 	"strings"
 )
