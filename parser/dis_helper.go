@@ -21,7 +21,7 @@ func (p *Prototype) preParseLabelLocations() (err error) {
 		info := Opinfos[opcode]
 
 		for j := 0; j < count; j++ {
-			if info[j].limit == LIMIT_LOCATION {
+			if info[j].Limit == LIMIT_LOCATION {
 				operand = ins.sbx()
 				jmpDest = operand + 1 + i
 				if (jmpDest >= len(p.code)) || (jmpDest < 0) {
@@ -39,7 +39,7 @@ func (p *Prototype) preParseLabelLocations() (err error) {
 // @return : err, insStr, useExtended, extraArg
 func (proto *Prototype) ParseInstructionToAsmLine(i instruction, indexInProtoCode int) (err error, insStr string, useExtended bool, extraArg bool) {
 	op := i.opCode()
-	opName := opNames[op]
+	opName := OpNames[op]
 	opName = strings.ToLower(opName)
 	insStr = opName
 
@@ -48,14 +48,14 @@ func (proto *Prototype) ParseInstructionToAsmLine(i instruction, indexInProtoCod
 	var operand int
 
 	//{{OPP_Ax, LIMIT_EMBED}}
-	if op == opExtraArg {
+	if op == OpExtraArg {
 		extraArg = true
 		insStr = ""
 	}
 
 	for j := 0; j < opCount; j++ {
-		limit := opInfo[j].limit
-		switch opInfo[j].pos {
+		limit := opInfo[j].Limit
+		switch opInfo[j].Pos {
 		case OPP_A:
 			operand = i.a()
 		case OPP_B:

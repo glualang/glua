@@ -393,7 +393,7 @@ func (f *function) encodeAsBx(op opCode, a, sbx int) int { return f.encodeABx(op
 
 func (f *function) encodeExtraArg(a int) int {
 	f.assert(a <= maxArgAx)
-	return f.encode(createAx(opExtraArg, a))
+	return f.encode(createAx(OpExtraArg, a))
 }
 
 func (f *function) EncodeConstant(r, constant int) int {

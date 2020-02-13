@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/zoowii/gluac/assembler"
 	"github.com/zoowii/gluac/parser"
 	"log"
 	"os"
 )
 
-var targetTypeFlag = flag.String("target", "asm", "target type")
+var targetTypeFlag = flag.String("target", "asm", "target type(asm or binary)")
 
 type commandType int
 
@@ -30,6 +31,8 @@ func isNoArgsCommand(cmdType commandType) bool {
 func programMain() (err error) {
 	var programCmdType = COMPILE_TO_ASM_COMMAND
 	flag.Parse()
+
+	targetType := *targetTypeFlag
 
 	otherArgs := flag.Args()
 
@@ -57,27 +60,71 @@ func programMain() (err error) {
 	}
 	log.Println("type tree: ", typeTree)
 
-	// dump AST to lua-asm
-	dumpProtoFilename := filename + ".asm"
-	dumpProtoFileExists, err := parser.CheckFileExists(dumpProtoFilename)
-	if err != nil {
-		return
-	}
-	if !dumpProtoFileExists {
-		f, createFileErr := os.Create(dumpProtoFilename)
-		if createFileErr != nil {
-			err = createFileErr
+
+	if targetType == "asm" {
+		// dump AST to lua-asm
+		dumpAsmProtoFilename := filename + ".asm"
+		dumpProtoFileExists, checkFileErr := parser.CheckFileExists(dumpAsmProtoFilename)
+		if checkFileErr != nil {
+			err = checkFileErr
 			return
 		}
-		defer f.Close()
+		if !dumpProtoFileExists {
+			f, createFileErr := os.Create(dumpAsmProtoFilename)
+			if createFileErr != nil {
+				err = createFileErr
+				return
+			}
+			defer f.Close()
+		}
+
+		dumpProtoF, openFileErr := os.OpenFile(dumpAsmProtoFilename, os.O_WRONLY, os.ModeAppend)
+		if openFileErr != nil {
+			err = openFileErr
+			return
+		}
+		defer dumpProtoF.Close()
+		asmOutStream := parser.NewSimpleByteStream()
+		proto.ToFuncAsm(asmOutStream, true)
+		dumpProtoF.Write(asmOutStream.ToBytes())
+		_ = proto
+	} else if targetType == "binary" {
+		// dump AST to binary
+		dumpBinaryProtoFilename := filename + ".out"
+		dumpProtoFileExists, checkFileErr := parser.CheckFileExists(dumpBinaryProtoFilename)
+		if checkFileErr != nil {
+			err = checkFileErr
+			return
+		}
+		if !dumpProtoFileExists {
+			f, createFileErr := os.Create(dumpBinaryProtoFilename)
+			if createFileErr != nil {
+				err = createFileErr
+				return
+			}
+			defer f.Close()
+		}
+
+		dumpProtoF, openFileErr := os.OpenFile(dumpBinaryProtoFilename, os.O_WRONLY, os.ModeAppend)
+		if openFileErr != nil {
+			err = openFileErr
+			return
+		}
+		defer dumpProtoF.Close()
+		asmOutStream := parser.NewSimpleByteStream()
+		proto.ToFuncAsm(asmOutStream, true)
+		asmStr := string(asmOutStream.ToBytes())
+		ass := assembler.NewAssembler()
+		binaryBytes, parseAsmErr := ass.ParseAsmContent(asmStr)
+		if parseAsmErr != nil {
+			err = parseAsmErr
+			return
+		}
+		dumpProtoF.Write(binaryBytes)
+		_ = proto
+	} else {
+		panic("not supported target type " + targetType)
 	}
-	dumpProtoF, err := os.OpenFile(dumpProtoFilename, os.O_WRONLY, os.ModeAppend)
-	if err != nil {
-		return
-	}
-	defer dumpProtoF.Close()
-	proto.ToFuncAsm(dumpProtoF, true)
-	_ = proto
 
 	warinings, compileErrs := typeChecker.Validate()
 	if len(warinings) > 0 {

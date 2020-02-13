@@ -81,7 +81,7 @@ const (
 	opSetList  /*	A B C	R(A)[(C-1)*FPF+i] := R(A+i), 1 <= i <= B	*/
 	opClosure  /*	A Bx	R(A) := closure(KPROTO[Bx])			*/
 	opVarArg   /*	A B	R(A), R(A+1), ..., R(A+B-2) = vararg		*/
-	opExtraArg /*	Ax	extra (larger) argument for previous opcode	*/
+	OpExtraArg /*	Ax	extra (larger) argument for previous opcode	*/
 
 	// added opcodes for other languages trans to lua bytecode
 	opPush   /* A   top++, evalstack(top) = R(A)  */
@@ -96,7 +96,7 @@ const (
 	NUM_OPCODES
 )
 
-var opNames = []string{
+var OpNames = []string{
 	"MOVE",
 	"LOADK",
 	"LOADKX",
@@ -250,7 +250,7 @@ var opModes []byte = []byte{
 	opmode(0, 0, opArgU, opArgU, iABC),  // opSetList
 	opmode(0, 1, opArgU, opArgN, iABx),  // opClosure
 	opmode(0, 1, opArgU, opArgN, iABC),  // opVarArg
-	opmode(0, 0, opArgU, opArgU, iAx),   // opExtraArg
+	opmode(0, 0, opArgU, opArgU, iAx),   // OpExtraArg
 }
 
 // count of parameters for each instruction
@@ -337,8 +337,8 @@ const (
 type OpPos int
 
 type OpInfo struct {
-	pos   OpPos
-	limit int
+	Pos   OpPos
+	Limit int
 }
 
 var Opinfos = [][]OpInfo{ // Maximum of 3 operands

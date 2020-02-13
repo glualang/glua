@@ -65,7 +65,7 @@ func (p *parser) checkLimit(val, limit int, what string) {
 		if line := p.function.f.lineDefined; line != 0 {
 			where = fmt.Sprintf("function at Line %d", line)
 		}
-		p.syntaxError(fmt.Sprintf("too many %s (limit is %d) in %s", what, limit, where))
+		p.syntaxError(fmt.Sprintf("too many %s (Limit is %d) in %s", what, limit, where))
 	}
 }
 
@@ -456,7 +456,7 @@ func (p *parser) forNumeric(name string, line int) {
 	expr := func() { p.assert(p.function.ExpressionToNextRegister(p.expression()).kind == kindNonRelocatable) }
 	base := p.function.freeRegisterCount
 	p.function.MakeLocalVariable("(for index)")
-	p.function.MakeLocalVariable("(for limit)")
+	p.function.MakeLocalVariable("(for Limit)")
 	p.function.MakeLocalVariable("(for step)")
 	p.function.MakeLocalVariable(name)
 	p.checkNext('=')
