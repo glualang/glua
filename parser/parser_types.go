@@ -55,7 +55,7 @@ func (info *FuncTypeParamInfo) String() string {
 type TypeTreeItem struct {
 	ItemType          typeItemType
 	Name              string
-	GenericTypeParams []string `json:"GenericTypeParams,omitempty"`
+	GenericTypeParams []*TypeTreeItem `json:"GenericTypeParams,omitempty"`
 	AliasTypeName     string   `json:"AliasTypeName,omitempty"`
 	AliasTypeParams   []string `json:"AliasTypeParams,omitempty"`
 
@@ -80,7 +80,11 @@ func (item *TypeTreeItem) String() string {
 	case simpleRecordType:
 		return fmt.Sprintf("<record (%s)>", item.RecordType.String())
 	case simpleNameWithGenericTypesType:
-		return fmt.Sprintf("<record %s<%s>>", item.Name, strings.Join(item.GenericTypeParams, ","))
+		paramsStrs := make([]string, 0)
+		for _, param := range item.GenericTypeParams {
+			paramsStrs = append(paramsStrs, param.String())
+		}
+		return fmt.Sprintf("<record %s<%s>>", item.Name, strings.Join(paramsStrs, ","))
 	case simpleNotDerivedType:
 		return "<not_derived>"
 	default:

@@ -32,6 +32,7 @@ const (
 	tkType
 	tkVar
 	tkLet
+	tkOffline
 
 	tkNil
 	tkNot
@@ -68,7 +69,7 @@ var tokens []string = []string{
 	"end", "false", "for", "function", "goto", "if",
 	"in", "local",
 
-	"type", "var", "let",
+	"type", "var", "let", "offline",
 
 	"nil", "not", "or", "repeat",
 	"return", "then", "true", "until", "while",

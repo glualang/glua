@@ -178,6 +178,24 @@ func (p *parser) primaryExpression() (e exprDesc) {
 	return
 }
 
+// 解析 类型后的 <Type1, Type2, ... > 这类泛型参数
+func (p *parser) checkGenericTypeParams() []*TypeTreeItem {
+	p.checkNext('<')
+	var params []*TypeTreeItem
+	for {
+		if p.testNext('>') {
+			break
+		}
+		typeParam := p.checkType()
+		params = append(params, typeParam)
+		if !p.testNext(',') {
+			p.checkNext('>')
+			break
+		}
+	}
+	return params
+}
+
 // 可能有后缀的表达式的解析
 func (p *parser) suffixedExpression() exprDesc {
 	line := p.lineNumber
@@ -193,6 +211,12 @@ func (p *parser) suffixedExpression() exprDesc {
 			// a:b(args) 的表达式，相当于a.b(a, args). 其中a需要是symbol
 			e = p.functionArguments(p.function.Self(e, p.checkNameAsExpression()), line)
 		case '(', tkString, '{':
+			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
+		case '<':
+			// TypeName<GenericTypes, ... > (...)
+			typeParams := p.checkGenericTypeParams()
+			_ = typeParams
+			// 因为是编译期泛型，调用带泛型参数的类型的构造函数可以忽略泛型参数
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
 		default:
 			return e
@@ -693,6 +717,12 @@ func (p *parser) functionName() (e exprDesc, isMethod bool) {
 	return
 }
 
+func (p *parser) offlineFunctionStatement(line int) {
+	p.checkNext(tkOffline)
+	p.functionStatement(line)
+	p.function.offline = true
+}
+
 func (p *parser) functionStatement(line int) {
 	p.next()
 	v, m := p.functionName()
@@ -781,14 +811,13 @@ func (p *parser) checkType() *TypeTreeItem {
 	}
 
 	typeName := p.checkName()
-	if p.testNext('<') {
+	if p.t == '<' {
 		// 带泛型参数的类型，比如P<T1, T2>
-		namelist := p.nameList() // TODO: 需要支持嵌套的泛型参数，比如P<T1, P2<T2> >
-		p.checkNext('>')
+		typeParams := p.checkGenericTypeParams()
 		return &TypeTreeItem{
 			ItemType:          simpleNameWithGenericTypesType,
 			Name:              typeName,
-			GenericTypeParams: namelist,
+			GenericTypeParams: typeParams,
 		}
 	}
 
@@ -818,6 +847,8 @@ func (p *parser) statement() {
 		p.repeatStatement(line)
 	case tkFunction:
 		p.functionStatement(line)
+	case tkOffline:
+		p.offlineFunctionStatement(line)
 	case tkLocal:
 		p.next()
 		if p.testNext(tkFunction) {
@@ -864,12 +895,10 @@ func (p *parser) statement() {
 		typeNameToken := p.checkName()
 		log.Printf("type Name found %s\n", typeNameToken)
 		_ = typeNameToken
-		var typeGenericNameList []string
-		if p.testNext('<') {
-			// 可能是 type Name < namelist > = ...
-			typeGenericNameList = p.nameList()
-			p.check('>')
-			p.next()
+		var typeGenericNameList []*TypeTreeItem
+		if p.t == '<' {
+			// 可能是 type Name <Type1, Typ2 > = ...
+			typeGenericNameList = p.checkGenericTypeParams()
 			p.checkNext('=')
 		} else {
 			// 可能是 type Name = ...

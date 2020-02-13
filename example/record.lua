@@ -59,3 +59,11 @@ var c1 = 1
 var c2: int = 2
 c1, c2 = 3, '4'
 print('c1=', c1, ', c2=', c2)
+
+let d1 = {1, 2} -- TODO: syntax like [a, b], {name: 'hello', age: 18}
+let d2 = #d1
+print("d1=", d1, ", d2=", d2)
+
+let e1 = Person1<string, int>()
+e1.name = 'hello, e1'
+pprint("e1=", e1)

@@ -156,6 +156,8 @@ type function struct {
 	freeRegisterCount   int // 使用中的寄存器数量
 	activeVariableCount int
 	firstLocal          int
+
+	offline             bool // 是否是offline的函数
 }
 
 func (f *function) OpenFunction(line int) {
@@ -348,7 +350,7 @@ func (f *function) Instruction(e exprDesc) *instruction { return &f.f.code[e.inf
 func (e exprDesc) hasJumps() bool                       { return e.t != e.f }
 func (e exprDesc) isNumeral() bool {
 	return (e.kind == kindNumber || e.kind == kindInt) && e.t == noJump && e.f == noJump
-}                                           // TODO: 需要适配整数 kindInt
+}
 func (e exprDesc) isVariable() bool         { return kindLocal <= e.kind && e.kind <= kindIndexed }
 func (e exprDesc) hasMultipleReturns() bool { return e.kind == kindCall || e.kind == kindVarArg }
 
@@ -1027,7 +1029,7 @@ func (f *function) Prefix(op int, e exprDesc, line int) exprDesc {
 	case oprNot:
 		return f.encodeNot(e)
 	case oprLength:
-		return f.encodeArithmetic(opLength, f.ExpressionToAnyRegister(e), makeExpression(kindNumber, 0), line) // TODO: 考虑 kindInt
+		return f.encodeArithmetic(opLength, f.ExpressionToAnyRegister(e), makeExpression(kindInt, 0), line)
 	case oprBnot:
 		return f.encodeBnot(e)
 	}
