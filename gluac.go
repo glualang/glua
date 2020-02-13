@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/zoowii/gluac/assembler"
@@ -11,6 +12,8 @@ import (
 )
 
 var targetTypeFlag = flag.String("target", "asm", "target type(asm or binary)")
+
+var vmTypeFlag = flag.String("vm", "lua53", "target bytecode type(lua53 or glua)")
 
 type commandType int
 
@@ -33,8 +36,18 @@ func programMain() (err error) {
 	flag.Parse()
 
 	targetType := *targetTypeFlag
+	vmType := *vmTypeFlag
 
 	otherArgs := flag.Args()
+
+	if vmType == "lua53" {
+		assembler.CurrentLuaConfig = assembler.Lua53Config
+	} else if vmType == "glua" {
+		assembler.CurrentLuaConfig = assembler.GluaConfig
+	} else {
+		err = errors.New("invalid target bytecode type " + vmType)
+		return
+	}
 
 	if isNoArgsCommand(programCmdType) {
 		return

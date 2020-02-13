@@ -1212,56 +1212,56 @@ func NewAssembler() *Assembler {
  * write lua bytecode header
  */
 func (assembler *Assembler) writeHeader() (bool, string) {
-	if BufferWriteCharArray(assembler.wBuffer, LUA_SIGNATURE) != nil {
+	if BufferWriteCharArray(assembler.wBuffer, CurrentLuaConfig.LuaSignature) != nil {
 		return false, "failed to write signature"
 	}
-	if BufferWriteInt8(assembler.wBuffer, LUAC_VERSION) != nil {
+	if BufferWriteInt8(assembler.wBuffer, CurrentLuaConfig.CompilerVersion) != nil {
 		return false, "failed to write version"
 	}
-	if BufferWriteInt8(assembler.wBuffer, LUAC_FORMAT) != nil {
+	if BufferWriteInt8(assembler.wBuffer, CurrentLuaConfig.CompilerFormat) != nil {
 		return false, "failed to write format"
 	}
-	if BufferWriteCharArray(assembler.wBuffer, LUAC_DATA) != nil {
+	if BufferWriteCharArray(assembler.wBuffer, CurrentLuaConfig.MagicData) != nil {
 		return false, "failed to write LUAC_DATA"
 	}
 	// write int32 size
 	if BufferWriteInt8(assembler.wBuffer, 4) != nil {
 		return false, "failed to write int size"
 	}
-	if BufferWriteInt8(assembler.wBuffer, LUA_SIZE_T_TYPE_SIZE) != nil {
+	if BufferWriteInt8(assembler.wBuffer, CurrentLuaConfig.SizeTypeSize) != nil {
 		return false, "failed to write size_t size"
 	}
 	// write instruction size
 	if BufferWriteInt8(assembler.wBuffer, 4) != nil {
 		return false, "failed to write instruction size"
 	}
-	if BufferWriteInt8(assembler.wBuffer, LUA_INTEGER_TYPE_SIZE) != nil {
+	if BufferWriteInt8(assembler.wBuffer, CurrentLuaConfig.IntegerTypeSize) != nil {
 		return false, "failed to write integer size"
 	}
-	if BufferWriteInt8(assembler.wBuffer, LUA_NUMBER_TYPE_SIZE) != nil {
+	if BufferWriteInt8(assembler.wBuffer, CurrentLuaConfig.NumberTypeSize) != nil {
 		return false, "failed to write number size"
 	}
-	if LUA_INTEGER_TYPE_SIZE == 4 {
-		if BufferWriteUInt32(assembler.wBuffer, LUAC_INT) != nil {
+	if CurrentLuaConfig.IntegerTypeSize == 4 {
+		if BufferWriteUInt32(assembler.wBuffer, CurrentLuaConfig.MagicInt32) != nil {
 			return false, "failed to write LUAC_INT"
 		}
-	} else if LUA_INTEGER_TYPE_SIZE == 8 {
-		if BufferWriteUInt64(assembler.wBuffer, LUAC_INT) != nil {
+	} else if CurrentLuaConfig.IntegerTypeSize == 8 {
+		if BufferWriteUInt64(assembler.wBuffer, CurrentLuaConfig.MagicInt64) != nil {
 			return false, "failed to write LUAC_INT"
 		}
 	} else {
-		return false, "unsupported lua_Integer size " + string(LUA_INTEGER_TYPE_SIZE)
+		return false, "unsupported lua_Integer size " + string(CurrentLuaConfig.IntegerTypeSize)
 	}
-	if LUA_NUMBER_TYPE_SIZE == 4 {
-		if BufferWriteFloat32(assembler.wBuffer, LUAC_NUM) != nil {
+	if CurrentLuaConfig.NumberTypeSize == 4 {
+		if BufferWriteFloat32(assembler.wBuffer, CurrentLuaConfig.MagicFloat32) != nil {
 			return false, "failed to write LUAC_NUM"
 		}
-	} else if LUA_NUMBER_TYPE_SIZE == 8 {
-		if BufferWriteFloat64(assembler.wBuffer, LUAC_NUM) != nil {
+	} else if CurrentLuaConfig.NumberTypeSize == 8 {
+		if BufferWriteFloat64(assembler.wBuffer, CurrentLuaConfig.MagicFloat64) != nil {
 			return false, "failed to write LUAC_NUM"
 		}
 	} else {
-		return false, "unsupported lua_Number size " + string(LUA_NUMBER_TYPE_SIZE)
+		return false, "unsupported lua_Number size " + string(CurrentLuaConfig.NumberTypeSize)
 	}
 	return true, ""
 }
@@ -1353,7 +1353,7 @@ func (assembler *Assembler) writeFunction(fn *ParsedFunction) (bool, string) {
 		constantValue := *fn.constants[i]
 		valtype := constantValue.valueType()
 
-		if valtype == LUA_TSTRING && len([]byte(constantValue.str())) > LUAI_MAXSHORTLEN {
+		if valtype == LUA_TSTRING && len([]byte(constantValue.str())) > CurrentLuaConfig.MaxShortLen {
 			valtype = LUA_TLNGSTR
 		}
 		if BufferWriteInt8(wBuffer, uint8(valtype)) != nil {
