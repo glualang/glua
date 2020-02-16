@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/glualang/gluac/assembler"
 	"github.com/glualang/gluac/parser"
+	"github.com/glualang/gluac/utils"
 	"log"
 	"os"
 )
@@ -14,6 +15,8 @@ import (
 var targetTypeFlag = flag.String("target", "asm", "target type(asm or binary)")
 
 var vmTypeFlag = flag.String("vm", "lua53", "target bytecode type(lua53 or glua)")
+
+var packageFlag = flag.Bool("package", false, "package bytecode with code info to single file")
 
 type commandType int
 
@@ -37,6 +40,8 @@ func programMain() (err error) {
 
 	targetType := *targetTypeFlag
 	vmType := *vmTypeFlag
+	packageToSingleFile := *packageFlag
+	_ = packageToSingleFile // TODO: 有这个标记的时候，把字节码和元信息打包到单一文件
 
 	otherArgs := flag.Args()
 
@@ -73,7 +78,6 @@ func programMain() (err error) {
 	}
 	log.Println("type tree: ", typeTree)
 
-
 	if targetType == "asm" {
 		// dump AST to lua-asm
 		dumpAsmProtoFilename := filename + ".asm"
@@ -97,7 +101,7 @@ func programMain() (err error) {
 			return
 		}
 		defer dumpProtoF.Close()
-		asmOutStream := parser.NewSimpleByteStream()
+		asmOutStream := utils.NewSimpleByteStream()
 		proto.ToFuncAsm(asmOutStream, true)
 		dumpProtoF.Write(asmOutStream.ToBytes())
 		_ = proto
@@ -124,7 +128,7 @@ func programMain() (err error) {
 			return
 		}
 		defer dumpProtoF.Close()
-		asmOutStream := parser.NewSimpleByteStream()
+		asmOutStream := utils.NewSimpleByteStream()
 		proto.ToFuncAsm(asmOutStream, true)
 		asmStr := string(asmOutStream.ToBytes())
 		ass := assembler.NewAssembler()

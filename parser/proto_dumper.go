@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"github.com/glualang/gluac/utils"
 	"strconv"
 )
 
@@ -15,7 +16,7 @@ func genPrototypeName() string {
 }
 
 // 把prototype转成lua asm的字符串格式
-func (p *Prototype) ToFuncAsm(outStream ByteStream, isTop bool) (err error) {
+func (p *Prototype) ToFuncAsm(outStream utils.ByteStream, isTop bool) (err error) {
 	if isTop {
 		outStream.WriteString(".upvalues " + strconv.Itoa(len(p.upValues)) + "\r\n")
 	}

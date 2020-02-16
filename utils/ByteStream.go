@@ -1,4 +1,4 @@
-package parser
+package utils
 
 import "io"
 
@@ -6,6 +6,7 @@ import "io"
 
 type ByteStream interface {
 	io.Writer
+	WriteByte(b byte) error
 	WriteString(str string) error
 	ToBytes() []byte
 }
@@ -16,6 +17,11 @@ type simpleByteStream struct {
 
 func NewSimpleByteStream() *simpleByteStream {
 	return &simpleByteStream{}
+}
+
+func (stream *simpleByteStream) WriteByte(b byte) (err error) {
+	_, err = stream.Write([]byte{b})
+	return
 }
 
 func (stream *simpleByteStream) Write(data []byte) (n int, err error) {
