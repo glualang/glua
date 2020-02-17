@@ -56,7 +56,7 @@ func IsTypeAssignable(valueType *TypeTreeItem, declareType *TypeTreeItem) bool {
 	if declareType.ItemType == simpleInnerType && declareType.Name == "object" {
 		return true
 	}
-	if valueType.ItemType == simpleInnerType && valueType.Name == "nil" {
+	if valueType.ItemType == simpleNilType {
 		return true
 	}
 

@@ -1,4 +1,4 @@
-package _package
+package packager
 
 import (
 	"crypto/sha1"
@@ -77,14 +77,10 @@ func readMaybeInt(value interface{}) (result int, err error) {
 func PackageBytecodeWithCodeInfo(bytecode []byte, codeInfo *CodeInfo) (result []byte, err error) {
 	resultBuf := utils.NewSimpleByteStream()
 	// bytecode digest
-	d := sha1.New()
-	bytecodeDigest := d.Sum(bytecode)
-	for i := 0; i < 5; i++ {
-		b := bytecodeDigest[i]
-		err = writeIntToPackage(resultBuf, int(b))
-		if err != nil {
-			return
-		}
+	bytecodeDigest := sha1.Sum(bytecode)
+	_, err = resultBuf.Write(bytecodeDigest[:])
+	if err != nil {
+		return
 	}
 	// bytecode
 	err = writeIntToPackage(resultBuf, len(bytecode))

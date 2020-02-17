@@ -1,3 +1,5 @@
 *.lua.asm
 *.glua.asm
 *.lua.out
+*.lua.gpc
+*.gpc

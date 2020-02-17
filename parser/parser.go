@@ -424,6 +424,7 @@ func (p *parser) assignment(t *assignmentTarget, variableCount int) {
 				rightValue := capturedExprList[i]
 				rightValueMaybeType := p.typeChecker.deriveExprType(rightValue)
 				p.typeChecker.AddAssignConstraint(symbol, rightValueMaybeType, p.lineNumber)
+				p.typeChecker.SetVariableType(symbol, rightValueMaybeType)
 			}
 		}
 		p.startCaptureExprList()
@@ -768,6 +769,7 @@ func (p *parser) localStatement(varDeclareType VariableType) {
 			varName := varNameList[i]
 			exprTypeDerived := p.typeChecker.deriveExprType(assignedExprList[i])
 			p.typeChecker.AddConstraint(varName, exprTypeDerived, varNameLines[varName])
+			p.typeChecker.SetVariableType(varName, exprTypeDerived)
 		}
 	} else {
 		var e exprDesc
@@ -788,8 +790,17 @@ func (p *parser) expressionStatement() {
 func (p *parser) returnStatement() {
 	if f := p.function; p.blockFollow(true) || p.t == ';' {
 		f.ReturnNone()
+		p.typeChecker.CurrentProtoScope.addReturnType(&TypeTreeItem{ItemType: simpleNilType})
 	} else {
-		f.Return(p.expressionList())
+		returnExpr, exprCount := p.expressionList()
+		var returnType *TypeTreeItem
+		if exprCount > 0 {
+			returnType = p.typeChecker.deriveExprType(returnExpr)
+		} else {
+			returnType = &TypeTreeItem{ItemType: simpleNilType}
+		}
+		p.typeChecker.CurrentProtoScope.addReturnType(returnType)
+		f.Return(returnExpr, exprCount)
 	}
 	p.testNext(';')
 }

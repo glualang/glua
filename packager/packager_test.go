@@ -1,4 +1,4 @@
-package _package
+package packager
 
 import (
 	"log"

@@ -2,12 +2,15 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/glualang/gluac/assembler"
+	"github.com/glualang/gluac/packager"
 	"github.com/glualang/gluac/parser"
 	"github.com/glualang/gluac/utils"
+	"io/ioutil"
 	"log"
 	"os"
 )
@@ -17,6 +20,8 @@ var targetTypeFlag = flag.String("target", "asm", "target type(asm or binary)")
 var vmTypeFlag = flag.String("vm", "lua53", "target bytecode type(lua53 or glua)")
 
 var packageFlag = flag.Bool("package", false, "package bytecode with code info to single file")
+
+var metaInfoFlag = flag.String("meta", "", "meta info json file path if you want package")
 
 type commandType int
 
@@ -34,6 +39,23 @@ func isNoArgsCommand(cmdType commandType) bool {
 	}
 }
 
+func createFileIfNotExists(filepath string) (err error) {
+	fileExist, checkFileErr := parser.CheckFileExists(filepath)
+	if checkFileErr != nil {
+		err = checkFileErr
+		return
+	}
+	if !fileExist {
+		f, createFileErr := os.Create(filepath)
+		if createFileErr != nil {
+			err = createFileErr
+			return
+		}
+		defer f.Close()
+	}
+	return
+}
+
 func programMain() (err error) {
 	var programCmdType = COMPILE_TO_ASM_COMMAND
 	flag.Parse()
@@ -41,7 +63,7 @@ func programMain() (err error) {
 	targetType := *targetTypeFlag
 	vmType := *vmTypeFlag
 	packageToSingleFile := *packageFlag
-	_ = packageToSingleFile // TODO: 有这个标记的时候，把字节码和元信息打包到单一文件
+	metaInfoFilePath := *metaInfoFlag
 
 	otherArgs := flag.Args()
 
@@ -81,18 +103,9 @@ func programMain() (err error) {
 	if targetType == "asm" {
 		// dump AST to lua-asm
 		dumpAsmProtoFilename := filename + ".asm"
-		dumpProtoFileExists, checkFileErr := parser.CheckFileExists(dumpAsmProtoFilename)
-		if checkFileErr != nil {
-			err = checkFileErr
+		err = createFileIfNotExists(dumpAsmProtoFilename)
+		if err != nil {
 			return
-		}
-		if !dumpProtoFileExists {
-			f, createFileErr := os.Create(dumpAsmProtoFilename)
-			if createFileErr != nil {
-				err = createFileErr
-				return
-			}
-			defer f.Close()
 		}
 
 		dumpProtoF, openFileErr := os.OpenFile(dumpAsmProtoFilename, os.O_WRONLY, os.ModeAppend)
@@ -108,18 +121,9 @@ func programMain() (err error) {
 	} else if targetType == "binary" {
 		// dump AST to binary
 		dumpBinaryProtoFilename := filename + ".out"
-		dumpProtoFileExists, checkFileErr := parser.CheckFileExists(dumpBinaryProtoFilename)
-		if checkFileErr != nil {
-			err = checkFileErr
+		err = createFileIfNotExists(dumpBinaryProtoFilename)
+		if err != nil {
 			return
-		}
-		if !dumpProtoFileExists {
-			f, createFileErr := os.Create(dumpBinaryProtoFilename)
-			if createFileErr != nil {
-				err = createFileErr
-				return
-			}
-			defer f.Close()
 		}
 
 		dumpProtoF, openFileErr := os.OpenFile(dumpBinaryProtoFilename, os.O_WRONLY, os.ModeAppend)
@@ -139,6 +143,51 @@ func programMain() (err error) {
 		}
 		dumpProtoF.Write(binaryBytes)
 		_ = proto
+
+		if packageToSingleFile {
+			// 如果要把字节码和元信息json文件一起打包到单独一个文件的话
+			if len(metaInfoFilePath) < 1 {
+				err = errors.New("please specify meta info json path")
+				return
+			}
+			metaInfoFile, openMetaInfoFileErr := os.OpenFile(metaInfoFilePath, os.O_RDONLY, os.ModeAppend)
+			if openMetaInfoFileErr != nil {
+				err = openMetaInfoFileErr
+				return
+			}
+			defer metaInfoFile.Close()
+			metaInfo, readMetaInfoErr := ioutil.ReadAll(metaInfoFile)
+			if readMetaInfoErr != nil {
+				err = readMetaInfoErr
+				return
+			}
+			var codeInfo packager.CodeInfo
+			err = json.Unmarshal(metaInfo, &codeInfo)
+			if err != nil {
+				return
+			}
+			packagedBytes, packageErr := packager.PackageBytecodeWithCodeInfo(binaryBytes, &codeInfo)
+			if packageErr != nil {
+				err = packageErr
+				return
+			}
+			packagedFileName := filename + ".gpc"
+			err = createFileIfNotExists(packagedFileName)
+			if err != nil {
+				return
+			}
+			packageFile, openPackageFileErr := os.OpenFile(packagedFileName, os.O_WRONLY, os.ModeAppend)
+			if openPackageFileErr != nil {
+				err = openPackageFileErr
+				return
+			}
+			defer packageFile.Close()
+			_, err = packageFile.Write(packagedBytes)
+			if err != nil {
+				return
+			}
+		}
+
 	} else {
 		panic("not supported target type " + targetType)
 	}

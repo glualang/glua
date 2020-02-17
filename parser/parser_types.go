@@ -16,6 +16,7 @@ const (
 	simpleAliasType                                    // 类型重命名或者带泛型参数的类型重命名
 	simpleFuncType                                     // 函数类型
 	simpleInnerType                                    // 内置类型，比如int, string, table, Array, Map等
+	simpleNilType									   // nil类型
 
 	simpleNotDerivedType // 暂未推导出的类型
 )
@@ -87,6 +88,8 @@ func (item *TypeTreeItem) String() string {
 		return fmt.Sprintf("<record %s<%s>>", item.Name, strings.Join(paramsStrs, ","))
 	case simpleNotDerivedType:
 		return "<not_derived>"
+	case simpleNilType:
+		return "nil"
 	default:
 		return "uknown type"
 	}
@@ -94,7 +97,7 @@ func (item *TypeTreeItem) String() string {
 
 var (
 	objectTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name: "object"}
-	nilTypeTreeItem    = &TypeTreeItem{ItemType: simpleInnerType, Name: "nil"}
+	nilTypeTreeItem    = &TypeTreeItem{ItemType: simpleNilType}
 	boolTypeTreeItem   = &TypeTreeItem{ItemType: simpleInnerType, Name: "bool"}
 	intTypeTreeItem    = &TypeTreeItem{ItemType: simpleInnerType, Name: "int"}
 	numberTypeTreeItem = &TypeTreeItem{ItemType: simpleInnerType, Name: "number"}
