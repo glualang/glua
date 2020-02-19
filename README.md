@@ -9,6 +9,7 @@ glua(lua + static type system) compiler implemented by golang
 * Compile-time static type system(在Lua5.3之上增加了编译期的静态类型系统)
 * Support for generating pseudo-assembly and bytecode formats(支持生成伪汇编代码和直接生成字节码)
 * Supports generating bytecode in Lua5.3 format and bytecode in glua format(支持生成Lua5.3格式的字节码和glua格式的字节码)
+* emit eventName(eventArgs), offline function, json literal等Lua5.3外的其他新增语法
 
 # Usage
 

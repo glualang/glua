@@ -11,6 +11,7 @@ import (
 type TypeChecker struct {
 	CurrentProtoScope *TypeInfoScope `json:"-"`         // 当前parse的proto的类型信息作用域
 	RootScope         *TypeInfoScope `json:"RootScope"` // 根类型信息作用域
+	Events            []string // emit出的eventName列表
 }
 
 func NewTypeChecker() *TypeChecker {
@@ -26,6 +27,13 @@ func NewTypeChecker() *TypeChecker {
 	return &TypeChecker{
 		RootScope:         rootScope,
 		CurrentProtoScope: rootScope,
+		Events: make([]string, 0),
+	}
+}
+
+func (checker *TypeChecker) AddEventName(eventName string) {
+	if !ContainsString(checker.Events, eventName) {
+		checker.Events = append(checker.Events, eventName)
 	}
 }
 

@@ -92,11 +92,13 @@ func PackageBytecodeWithCodeInfo(bytecode []byte, codeInfo *CodeInfo) (result []
 		return
 	}
 	// apis
-	err = writeIntToPackage(resultBuf, len(codeInfo.Apis))
+	// apis要排除offline apis
+	nonOfflineApis := codeInfo.NonOfflineApis()
+	err = writeIntToPackage(resultBuf, len(nonOfflineApis))
 	if err != nil {
 		return
 	}
-	for _, api := range codeInfo.Apis {
+	for _, api := range nonOfflineApis {
 		err = writeStringToPackage(resultBuf, api)
 		if err != nil {
 			return
@@ -161,7 +163,7 @@ func PackageBytecodeWithCodeInfo(bytecode []byte, codeInfo *CodeInfo) (result []
 			return
 		}
 		apiArgsJson, err2 := json.Marshal(apiArgsInfo[1])
-		if err2!=nil{
+		if err2 != nil {
 			err = err2
 			return
 		}

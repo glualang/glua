@@ -1,7 +1,7 @@
 {
   "api": ["init","setName", "query"],
   "offline_api": ["query"],
-  "event": [],
+  "event": ["setName"],
   "storage_properties_types": [
     ["name", 2]
   ],

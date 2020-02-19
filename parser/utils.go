@@ -26,3 +26,12 @@ func CheckFileExists(filepath string) (bool, error) {
 
 	return false, err
 }
+
+func ContainsString(array []string, term string) bool {
+	for _, item := range array {
+		if item == term {
+			return true
+		}
+	}
+	return false
+}

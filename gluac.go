@@ -100,6 +100,10 @@ func programMain() (err error) {
 	}
 	log.Println("type tree: ", typeTree)
 
+	readFileMode := os.O_RDONLY
+	createReadWriteFileMode := os.O_CREATE | os.O_RDWR | os.O_TRUNC
+	var writeFilePerMode os.FileMode = 0644
+
 	if targetType == "asm" {
 		// dump AST to lua-asm
 		dumpAsmProtoFilename := filename + ".asm"
@@ -108,7 +112,7 @@ func programMain() (err error) {
 			return
 		}
 
-		dumpProtoF, openFileErr := os.OpenFile(dumpAsmProtoFilename, os.O_WRONLY, os.ModeAppend)
+		dumpProtoF, openFileErr := os.OpenFile(dumpAsmProtoFilename, createReadWriteFileMode, writeFilePerMode)
 		if openFileErr != nil {
 			err = openFileErr
 			return
@@ -126,7 +130,7 @@ func programMain() (err error) {
 			return
 		}
 
-		dumpProtoF, openFileErr := os.OpenFile(dumpBinaryProtoFilename, os.O_WRONLY, os.ModeAppend)
+		dumpProtoF, openFileErr := os.OpenFile(dumpBinaryProtoFilename, createReadWriteFileMode, writeFilePerMode)
 		if openFileErr != nil {
 			err = openFileErr
 			return
@@ -150,7 +154,7 @@ func programMain() (err error) {
 				err = errors.New("please specify meta info json path")
 				return
 			}
-			metaInfoFile, openMetaInfoFileErr := os.OpenFile(metaInfoFilePath, os.O_RDONLY, os.ModeAppend)
+			metaInfoFile, openMetaInfoFileErr := os.OpenFile(metaInfoFilePath, readFileMode, writeFilePerMode)
 			if openMetaInfoFileErr != nil {
 				err = openMetaInfoFileErr
 				return
@@ -176,7 +180,7 @@ func programMain() (err error) {
 			if err != nil {
 				return
 			}
-			packageFile, openPackageFileErr := os.OpenFile(packagedFileName, os.O_WRONLY, os.ModeAppend)
+			packageFile, openPackageFileErr := os.OpenFile(packagedFileName, createReadWriteFileMode, writeFilePerMode)
 			if openPackageFileErr != nil {
 				err = openPackageFileErr
 				return

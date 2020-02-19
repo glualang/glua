@@ -18,11 +18,11 @@ type parser struct {
 	typeChecker *TypeChecker
 
 	// 采集到的表达式列表，可以start多次采集表达式列表（压栈）。stop采集的时候移除顶层。push新采集值时每层采集列表都要增加这个值
-	capturingExprListStack   [][]exprDesc
+	capturingExprListStack [][]exprDesc
 }
 
-func (p * parser) captureExprValue(value exprDesc) {
-	for i := 0; i< len(p.capturingExprListStack); i++ {
+func (p *parser) captureExprValue(value exprDesc) {
+	for i := 0; i < len(p.capturingExprListStack); i++ {
 		p.capturingExprListStack[i] = append(p.capturingExprListStack[i], value)
 	}
 }
@@ -42,7 +42,7 @@ func (p *parser) StopCaptureExprList() []exprDesc {
 	}
 	stackSize := len(p.capturingExprListStack)
 	saved := p.capturingExprListStack[stackSize-1]
-	p.capturingExprListStack = p.capturingExprListStack[0:(stackSize-1)]
+	p.capturingExprListStack = p.capturingExprListStack[0:(stackSize - 1)]
 	return saved
 }
 
@@ -408,7 +408,7 @@ func (p *parser) assignment(t *assignmentTarget, variableCount int) {
 		p.assignment(&assignmentTarget{previous: t, exprDesc: e}, variableCount+1)
 	} else {
 		p.checkNext('=')
-		saveAssignConstraint := func (valueList exprDesc, capturedExprList []exprDesc) {
+		saveAssignConstraint := func(valueList exprDesc, capturedExprList []exprDesc) {
 			// variableCount个变量的赋值语句，需要调用typeChecker.AddAssignConstraint
 			targetList := t.exprList()
 			for i, nameExpr := range targetList {
@@ -417,7 +417,7 @@ func (p *parser) assignment(t *assignmentTarget, variableCount int) {
 					continue
 				}
 				symbol := nameExpr.symbol
-				if i>=len(capturedExprList) {
+				if i >= len(capturedExprList) {
 					// 暂时不考虑右侧值比赋值的变量少的情况
 					continue
 				}
@@ -724,6 +724,34 @@ func (p *parser) offlineFunctionStatement(line int) {
 	p.function.offline = true
 }
 
+func (p *parser) emitStatement(line int) {
+	p.checkNext(tkEmit)
+	eventName := p.checkName()
+	// emit eventName(arg) 要生成 emit(eventNameString, arg)的函数调用. 并且eventName要记录到整个typeChecker的events列表中
+	// 要_ENV中找到emit函数并压栈作为接下来要调用的函数
+	emitFuncExpr := p.function.SingleVariable("emit")
+	emitFuncExpr = p.function.ExpressionToNextRegister(emitFuncExpr)
+	base := emitFuncExpr.info
+	// eventName要作为字符串常量并作为emit函数第一个参数加入到next slot中
+	eventNameExpr := p.function.EncodeString(eventName)
+	eventNameExpr = p.function.ExpressionToNextRegister(eventNameExpr)
+
+	p.checkNext('(')
+	eventArgs, eventArgsCount := p.expressionList()
+	eventArgs = p.function.ExpressionToNextRegister(eventArgs)
+	p.checkMatch(')', '(', line)
+
+	_ = eventArgs
+	// 调用emit函数
+	parameterCount := 1 + eventArgsCount
+	statementExpr := makeExpression(kindCall, p.function.EncodeABC(opCall, base, parameterCount+1, 2))
+	p.function.Instruction(statementExpr).setC(1) // no return call statement
+	p.function.FixLine(line)
+	p.function.freeRegisterCount = base
+
+	p.typeChecker.AddEventName(eventName)
+}
+
 func (p *parser) functionStatement(line int) {
 	p.next()
 	v, m := p.functionName()
@@ -860,6 +888,8 @@ func (p *parser) statement() {
 		p.functionStatement(line)
 	case tkOffline:
 		p.offlineFunctionStatement(line)
+	case tkEmit:
+		p.emitStatement(line)
 	case tkLocal:
 		p.next()
 		if p.testNext(tkFunction) {
