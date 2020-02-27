@@ -61,6 +61,16 @@ func (p *parser) checkName() string {
 	return s
 }
 
+func (p *parser) checkNameOrError() (result string, err error) {
+	if p.t != tkName {
+		err = errors.New(p.tokenToString(tkName) + " expected")
+		return
+	}
+	result = p.s
+	p.next()
+	return
+}
+
 func (p *parser) checkLimit(val, limit int, what string) {
 	if val > limit {
 		where := "main function"
@@ -199,7 +209,11 @@ func (p *parser) checkGenericTypeParams() (result []*TypeTreeItem, err error) {
 		if p.testNext('>') {
 			break
 		}
-		typeParam := p.checkType()
+		typeParam, checkTypeErr := p.checkTypeOrError()
+		if checkTypeErr != nil {
+			err = checkTypeErr
+			return
+		}
 		result = append(result, typeParam)
 		if !p.testNext(',') {
 			err = p.checkNextOrError('>')
@@ -862,39 +876,67 @@ func (p *parser) returnStatement() {
 }
 
 func (p *parser) checkType() *TypeTreeItem {
+	result, err := p.checkTypeOrError()
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
+func (p *parser) checkTypeOrError() (result *TypeTreeItem, err error) {
 	// 类型可能是 symbol或者带泛型参数的类型，或者函数表达式 (...) => <type>
 	if p.testNext('(') {
 		// 函数签名类型 (...) => <type>
 		funcParams := p.checkParameterList()
-		p.checkNext(')')
-		p.checkNext('=')
-		p.checkNext('>')
-		returnType := p.checkType()
-		return &TypeTreeItem{
+		err = p.checkNextOrError(')')
+		if err != nil {
+			return
+		}
+		err = p.checkNextOrError('=')
+		if err != nil {
+			return
+		}
+		err = p.checkNextOrError('>')
+		if err != nil {
+			return
+		}
+		returnType, checkTypeErr := p.checkTypeOrError()
+		if checkTypeErr != nil {
+			err = checkTypeErr
+			return
+		}
+		result = &TypeTreeItem{
 			ItemType:       simpleFuncType,
 			FuncTypeParams: funcParams,
 			FuncReturnType: returnType,
 		}
+		return
 	}
 
-	typeName := p.checkName()
+	typeName, err := p.checkNameOrError()
+	if err != nil {
+		return
+	}
 	if p.t == '<' {
 		// 带泛型参数的类型，比如P<T1, T2>
-		typeParams, err := p.checkGenericTypeParams()
-		if err != nil {
-			panic(err)
+		typeParams, checkGenericTypeParamsError := p.checkGenericTypeParams()
+		if checkGenericTypeParamsError != nil {
+			err = checkGenericTypeParamsError
+			return
 		}
-		return &TypeTreeItem{
+		result = &TypeTreeItem{
 			ItemType:          simpleNameWithGenericTypesType,
 			Name:              typeName,
 			GenericTypeParams: typeParams,
 		}
+		return
 	}
 
-	return &TypeTreeItem{
+	result = &TypeTreeItem{
 		ItemType: simpleNameType,
 		Name:     typeName,
 	}
+	return
 }
 
 func (p *parser) statement() {
