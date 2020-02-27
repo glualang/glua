@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
+	"github.com/glualang/gluac/utils"
 	"io"
 	"log"
 	"strings"
@@ -72,6 +74,15 @@ func (p *parser) checkLimit(val, limit int, what string) {
 func (p *parser) checkNext(t rune) {
 	p.check(t)
 	p.next()
+}
+
+func (p *parser) checkNextOrError(t rune) (err error) {
+	if p.t != t {
+		err = errors.New(p.tokenToString(t) + " expected")
+		return
+	}
+	p.next()
+	return
 }
 
 func (p *parser) checkNameAsExpression() exprDesc { return p.function.EncodeString(p.checkName()) }
@@ -179,21 +190,26 @@ func (p *parser) primaryExpression() (e exprDesc) {
 }
 
 // 解析 类型后的 <Type1, Type2, ... > 这类泛型参数
-func (p *parser) checkGenericTypeParams() []*TypeTreeItem {
-	p.checkNext('<')
-	var params []*TypeTreeItem
+func (p *parser) checkGenericTypeParams() (result []*TypeTreeItem, err error) {
+	err = p.checkNextOrError('<')
+	if err != nil {
+		return
+	}
 	for {
 		if p.testNext('>') {
 			break
 		}
 		typeParam := p.checkType()
-		params = append(params, typeParam)
+		result = append(result, typeParam)
 		if !p.testNext(',') {
-			p.checkNext('>')
+			err = p.checkNextOrError('>')
+			if err != nil {
+				return
+			}
 			break
 		}
 	}
-	return params
+	return
 }
 
 // 可能有后缀的表达式的解析
@@ -213,8 +229,20 @@ func (p *parser) suffixedExpression() exprDesc {
 		case '(', tkString, '{':
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
 		case '<':
+			// 保存scanner状态，向前尝试checkGenericTypeParams，失败则回溯并当成小于号 < 处理
+			scannerSnapshot := p.scanner
+			scannerReaderPosition := scannerSnapshot.r.Position()
 			// TypeName<GenericTypes, ... > (...)
-			typeParams := p.checkGenericTypeParams()
+			typeParams, err := p.checkGenericTypeParams()
+			if err != nil {
+				// 回退scanner状态然后return e
+				p.scanner = scannerSnapshot
+				err = p.scanner.r.Reset(scannerReaderPosition)
+				if err != nil {
+					panic(err)
+				}
+				return e
+			}
 			_ = typeParams
 			// 因为是编译期泛型，调用带泛型参数的类型的构造函数可以忽略泛型参数
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
@@ -852,7 +880,10 @@ func (p *parser) checkType() *TypeTreeItem {
 	typeName := p.checkName()
 	if p.t == '<' {
 		// 带泛型参数的类型，比如P<T1, T2>
-		typeParams := p.checkGenericTypeParams()
+		typeParams, err := p.checkGenericTypeParams()
+		if err != nil {
+			panic(err)
+		}
 		return &TypeTreeItem{
 			ItemType:          simpleNameWithGenericTypesType,
 			Name:              typeName,
@@ -939,7 +970,11 @@ func (p *parser) statement() {
 		var typeGenericNameList []*TypeTreeItem
 		if p.t == '<' {
 			// 可能是 type Name <Type1, Typ2 > = ...
-			typeGenericNameList = p.checkGenericTypeParams()
+			var err error
+			typeGenericNameList, err = p.checkGenericTypeParams()
+			if err != nil {
+				panic(err)
+			}
 			p.checkNext('=')
 		} else {
 			// 可能是 type Name = ...
@@ -1041,7 +1076,7 @@ func (p *parser) mainFunction() {
 
 func ParseToPrototype(r io.ByteReader, name string) (*Prototype, *TypeChecker) {
 	p := &parser{
-		scanner:     scanner{r: r, lineNumber: 1, lastLine: 1, lookAheadToken: token{t: tkEOS}, source: name},
+		scanner:     scanner{r: utils.ByteReaderToRepeatable(r), lineNumber: 1, lastLine: 1, lookAheadToken: token{t: tkEOS}, source: name},
 		typeChecker: NewTypeChecker(),
 	}
 	f := &function{f: &Prototype{source: name, maxStackSize: 2, isVarArg: true, extra: NewPrototypeExtra(), name: "main"}, constantLookup: make(map[value]int), p: p, jumpPC: noJump}

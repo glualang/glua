@@ -40,6 +40,7 @@ print('3 ~ 2=', 3 ~ 2)
 print('~3=', ~a)
 print('1<<2=', 1 << 2)
 print('7>>2=', 7 >> 2)
+print('a < a=', a < a)
 
 let f1: string = 'hello'
 let f2: Person2 = Person2()

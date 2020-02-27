@@ -3,7 +3,7 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"github.com/glualang/gluac/utils"
 	"math"
 	"strconv"
 	"strings"
@@ -88,7 +88,7 @@ type token struct {
 type scanner struct {
 	//l                    *State
 	buffer               bytes.Buffer
-	r                    io.ByteReader
+	r                    utils.RepeatableByteReader
 	current              rune
 	lineNumber, lastLine int
 	source               string
