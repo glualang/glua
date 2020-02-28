@@ -563,46 +563,70 @@ func (assembler *Assembler) parseDirective(line string, lineLen int) (bool, stri
 	return true, ""
 }
 
+//parse const string
+func (assembler *Assembler) parseString(line string,hasComment bool) (bool, int, string) {
+	buf := bytes.NewBuffer([]byte{})
+	current := 1
+	end := len(line)-1
+	c := line[0]
+	success := false
+	if line[0] == '"' && end >=1 {
+		for current<=end{
+			c = line[current]
+			if(c == '\\'){
+				current++
+				c = line[current]
+			}else if(c == '"'){
+				success = true
+				break
+			}
+			buf.WriteByte(c)
+			current++
+		}
+
+		if(success){
+			result := string(buf.Bytes())
+			remainStr := line[(current+1):]
+			Trim(remainStr)
+			if(len(remainStr)>0) && (remainStr[0]==';'){
+				return true, len(line), result
+			}
+			return true, len(result)+2, result
+		}
+
+	}
+	return false, len(line), "truncated constant string value " + line
+
+}
+
 func (assembler *Assembler) parseConstant(line string, lineLen int, id *int) (bool, int, string) {
 	var tval TValue
 	c := 0
 	// lineComment := assembler.getLineCommentFromAsmLineCode(line, lineLen)
 	// lineNumber := assembler.getLinenumberFromAsmLineComment(lineComment)
 	line = Trim(line)
-	if strings.Index(line, ";") >= 0 {
-		line = line[:strings.Index(line, ";")]
-	}
+
 	cf := strings.ToLower(line[c : c+1])[0]
 	cfStr := string(cf)
+	if cfStr != "\"" {  // /////
+		if strings.Index(line, ";") >= 0 {
+			line = line[:strings.Index(line, ";")]
+		}
+	}
 	lineBytes := []byte(line)
-
 	bend := StringFirstIndexOf(line, func(c byte) bool {
 		return IsEmptyChar(c)
 	}) // read constant value string end index
 	// TODO: read next value or using tokenizer to parse line tokens
 	if cfStr == "\"" { // parse string
-		var strVal string
-		if len(line) < 2 {
-			return false, bend, "truncated constant value " + line
+		ok,end,result := assembler.parseString(line,true)
+		if(!ok){
+			return false, bend, result
 		}
-		constend := strings.Index(line[1:], "\"")
-
-		if constend < 0 {
-			return false, bend, "truncated constant value " + line
-		}
-
-		line = line[:(constend + 2)]
-		unquoted, ok := strconv.Unquote(line) // process escaped chars
-		if ok != nil {
-			return false, 0, "unquote string error in line " + line
-		}
-		lineBytes = []byte(unquoted)
-		// json.Unmarshal(lineBytes, &strVal)
-		strVal = unquoted
+		bend = end
 		tstr := new(TString)
-		tstr.string_value = strVal
+		tstr.string_value = result
 		tval = tstr
-		bend = len(line)
 	} else if cfStr == "+" || cfStr == "-" || cfStr == "." || unicode.IsDigit(rune(cf)) {
 		if strings.Index(line, ".") >= 0 {
 			// parse float
@@ -950,16 +974,15 @@ func (assembler *Assembler) parseCode(line string, lineLen int) (bool, string) {
 		assembler.lineinfos = append(assembler.lineinfos, lineNumber)
 	}
 	line = Trim(line)
-	//fmt.Printf("code line: %s\n", line)
-	if strings.Index(line, ";") >= 0 {
-		line = line[:strings.Index(line, ";")]
-	}
+
 	remainingLine := line
 	parseRes, lend, opcodestr := ParseLabel(remainingLine, 0, len(remainingLine))
 	if !parseRes {
 		return false, "parse code opcode error " + line
 	}
 	remainingLine = strings.Trim(remainingLine[lend:], " \t")
+
+
 	if len(remainingLine) > 0 && remainingLine[0] == ':' {
 		assembler.locations[opcodestr] = len(assembler.instructions)
 		// 一些指令用到了sBx参数，所以需要记录指令位置

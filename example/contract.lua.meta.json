@@ -6,6 +6,7 @@
     ["name", 2]
   ],
   "api_args_types": [
+  	["init", []],
     ["setName", [2]],
     ["query", [2]]
   ]

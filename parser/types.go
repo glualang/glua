@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"reflect"
@@ -13,10 +14,23 @@ type pc int
 
 var none value = &struct{}{}
 
+func escapeString(v string)(result string){
+	buf := bytes.NewBuffer([]byte{})
+	c := byte(0)
+	for i:=0;i<len(v);i++{
+		c = v[i]
+		if(c=='"' || c=='\\' || c=='\n'|| c=='\t'|| c=='\a'|| c=='\b'|| c=='\f'|| c=='\r'|| c=='\v') {
+			buf.WriteByte('\\')
+		}
+		buf.WriteByte(c)
+	}
+	return string(buf.Bytes())
+}
+
 func literalValueString(v value) (result string, ok bool) {
 	switch v := v.(type) {
 	case string:
-		return "\"" + v + "\"", true // TODO: escape string
+		return "\"" + escapeString(v) + "\"", true
 	case int64:
 		return fmt.Sprintf("%d", v), true
 	case float64:
