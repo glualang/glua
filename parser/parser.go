@@ -114,11 +114,16 @@ func (p *parser) field(tableRegister, a, h, pending int, e exprDesc) (int, int, 
 	freeRegisterCount := p.function.freeRegisterCount
 	hashField := func(k exprDesc) {
 		h++
-		p.checkNext('=')
+		if !p.testNext(':') {
+			p.checkNext('=')
+		}
 		p.function.FlushFieldToConstructor(tableRegister, freeRegisterCount, k, p.expression)
 	}
 	switch {
 	case p.t == tkName && p.lookAhead() == '=':
+		p.checkLimit(h, maxInt, "items in a constructor")
+		hashField(p.checkNameAsExpression())
+	case p.t == tkName && p.lookAheadToken.t == ':': // 这里用lookAheadToken是因为第一步case已经p.lookahead()函数调用过了
 		p.checkLimit(h, maxInt, "items in a constructor")
 		hashField(p.checkNameAsExpression())
 	case p.t == '[':
@@ -146,6 +151,25 @@ func (p *parser) constructor() exprDesc {
 		}
 	}
 	p.checkMatch('}', '{', line)
+	p.function.CloseConstructor(pc, t.info, pending, a, h, e)
+	return t
+}
+
+// [a,b, ...]这种类JSON数组语法
+func (p *parser) arrayConstructor() exprDesc {
+	pc, t := p.function.OpenConstructor()
+	line, a, h, pending := p.lineNumber, 0, 0, 0
+	var e exprDesc
+	if p.checkNext('['); p.t != ']' {
+		for a, h, pending, e = p.field(t.info, a, h, pending, e); p.testNext(',') && p.t != ']'; {
+			if e.kind != kindVoid {
+				pending = p.function.FlushToConstructor(t.info, pending, a, e)
+				e.kind = kindVoid
+			}
+			a, h, pending, e = p.field(t.info, a, h, pending, e)
+		}
+	}
+	p.checkMatch(']', '[', line)
 	p.function.CloseConstructor(pc, t.info, pending, a, h, e)
 	return t
 }
@@ -288,6 +312,9 @@ func (p *parser) simpleExpression() (e exprDesc) {
 		e = makeExpression(kindVarArg, p.function.EncodeABC(opVarArg, 0, 1, 0))
 	case '{':
 		e = p.constructor()
+		return
+	case '[':
+		e = p.arrayConstructor()
 		return
 	case tkFunction:
 		p.next()

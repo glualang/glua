@@ -10,6 +10,7 @@ glua(lua + static type system) compiler implemented by golang
 * Support for generating pseudo-assembly and bytecode formats(支持生成伪汇编代码和直接生成字节码)
 * Supports generating bytecode in Lua5.3 format and bytecode in glua format(支持生成Lua5.3格式的字节码和glua格式的字节码)
 * emit eventName(eventArgs), offline function, json literal等Lua5.3外的其他新增语法
+* 字面量支持类似JSON的array和object语法
 
 # Usage
 
@@ -61,6 +62,7 @@ print('3 ~ 2=', 3 ~ 2)
 print('~3=', ~a)
 print('1<<2=', 1 << 2)
 print('7>>2=', 7 >> 2)
+print('a < a=', a < a) -- 测试小于号不会和泛型参数 G<T1>这种情况冲突
 
 let f1: string = 'hello'
 let f2: Person2 = Person2()
@@ -83,7 +85,9 @@ print('c1=', c1, ', c2=', c2)
 
 let d1 = {1, 2}
 let d2 = #d1
-print("d1=", d1, ", d2=", d2)
+let d3 = [1, 2] -- 类似JSON的[a, b, ...]的数组语法
+let d4 = { name: 'hello', age: 18 } -- 类似JSON的object语法
+print("d1=", d1, ", d2=", d2, ", d3=", d3, ", d4=", d4)
 
 let e1 = Person1<string, int>()
 e1.name = 'hello, e1'
