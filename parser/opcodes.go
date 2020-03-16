@@ -82,8 +82,6 @@ const (
 	opClosure  /*	A Bx	R(A) := closure(KPROTO[Bx])			*/
 	opVarArg   /*	A B	R(A), R(A+1), ..., R(A+B-2) = vararg		*/
 	OpExtraArg /*	Ax	extra (larger) argument for previous opcode	*/
-
-	// added opcodes for other languages trans to lua bytecode
 	opPush   /* A   top++, evalstack(top) = R(A)  */
 	opPop    /* A   R(A) := evalstack(top), top-- */
 	opGetTop /* A   R(A) := evalstack(top) */
@@ -92,7 +90,9 @@ const (
 	opCmpNe  /* A B C R(A) = 1 if RK(B) != RK(C), else 0 */
 	opCmpGt  /* A B C R(A) = 1 if RK(B) > RK(C), else 0 */
 	opCmpLt  /* A B C R(A) = 1 if RK(B) < RK(C), else 0 */
-
+	opCcall
+	opCstaticcall
+	opMeter  /**/
 	NUM_OPCODES
 )
 
@@ -156,6 +156,9 @@ var OpNames = []string{
 	"CMP_NE",
 	"CMP_GT",
 	"CMP_LT",
+	"CCALL",
+	"CSTATICCALL",
+	"METER",
 }
 
 const (
@@ -251,6 +254,21 @@ var opModes []byte = []byte{
 	opmode(0, 1, opArgU, opArgN, iABx),  // opClosure
 	opmode(0, 1, opArgU, opArgN, iABC),  // opVarArg
 	opmode(0, 0, opArgU, opArgU, iAx),   // OpExtraArg
+
+	opmode(0, 1, opArgN, opArgN, iABC),		/* UOP_PUSH */
+	opmode(0, 1, opArgN, opArgN, iABC), 		/* UOP_POP */
+	opmode(0, 1, opArgN, opArgN, iABC), 		/* UOP_GETTOP */
+	opmode(0, 1, opArgK, opArgK, iABC) ,       /* UOP_CMP */
+
+	opmode(0, 1, opArgK, opArgK, iABC) ,       /* UOP_CMP_EQ */
+	opmode(0, 1, opArgK, opArgK, iABC)  ,      /* UOP_CMP_NE */
+	opmode(0, 1, opArgK, opArgK, iABC)  ,      /* UOP_CMP_GT */
+	opmode(0, 1, opArgK, opArgK, iABC)  ,      /* UOP_CMP_LT */
+	opmode(0, 1, opArgR, opArgN, iABC), 		/* UOP_CCALL */
+	opmode(0, 1, opArgR, opArgN, iABC), 		/* UOP_CSTATICCALL */
+	opmode(0, 0, opArgU, opArgU, iAx)	,	/* UOP_METER */
+
+	/*TODO add push pop ............*/
 }
 
 // count of parameters for each instruction
@@ -310,6 +328,9 @@ var Opcounts = []int{
 	3, // CMP_NE
 	3, // CMP_GT
 	3, // CMP_LT
+	3, // CCALL /* A B C  R(A), ... ,R(A+C-2) := CALL CONTRACT:R(A)  API:R(A+1)(ARGS: R(A+2),...R(A+B))*/
+	3, // CSTATICCALL  not change storage /* A B C  R(A), ... ,R(A+C-2) := CALL CONTRACT:R(A)  API:R(A+1)(ARGS: R(A+2),...R(A+B))*/
+	1,//METER
 }
 
 const (
@@ -400,4 +421,9 @@ var Opinfos = [][]OpInfo{ // Maximum of 3 operands
 	{{OPP_A, LIMIT_STACKIDX}, {OPP_B, LIMIT_CONST_STACK}, {OPP_C, LIMIT_CONST_STACK}}, // CMP_NE
 	{{OPP_A, LIMIT_STACKIDX}, {OPP_B, LIMIT_CONST_STACK}, {OPP_C, LIMIT_CONST_STACK}}, // CMP_GT
 	{{OPP_A, LIMIT_STACKIDX}, {OPP_B, LIMIT_CONST_STACK}, {OPP_C, LIMIT_CONST_STACK}}, // CMP_LT
+
+	{{OPP_A, LIMIT_STACKIDX}, {OPP_B, LIMIT_EMBED}, {OPP_C, LIMIT_EMBED}},             // CCALL
+	{{OPP_A, LIMIT_STACKIDX}, {OPP_B, LIMIT_EMBED}, {OPP_C, LIMIT_EMBED}},             // CSTATICCALL
+
+	{{OPP_Ax, LIMIT_EMBED}}, // METER
 }

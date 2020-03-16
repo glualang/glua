@@ -98,6 +98,10 @@ func (proto *Prototype) ParseInstructionToAsmLine(i instruction, indexInProtoCod
 			insStr = insStr + " const " + constLiteral
 		case LIMIT_LOCATION:
 			loclabel := proto.extra.labelLocations[int(operand)+1+indexInProtoCode]
+			if(len(loclabel)<1){
+				err = errors.New("wrong jmp location")
+				return
+			}
 			insStr = insStr + " $" + loclabel
 		case LIMIT_CONST_STACK:
 			if (int(operand) & BITRK) > 0 {

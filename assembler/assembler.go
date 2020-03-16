@@ -329,6 +329,9 @@ func (assembler *Assembler) finalizeFunction() (bool, string) {
 	copy(fn.lineinfos, assembler.lineinfos)
 	assembler.lineinfos = assembler.lineinfos[:0]
 	assembler.functions[fn.name] = fn
+
+	assembler.locations = make(map[string]int)
+	//assembler.neededLocations = assembler.neededLocations[:0]
 	return true, ""
 }
 
@@ -999,6 +1002,7 @@ func (assembler *Assembler) parseCode(line string, lineLen int) (bool, string) {
 		return true, ""
 	}
 	opcodestr = strings.ToLower(opcodestr)
+
 	var opcode OpCode
 	for i := 0; i < int(parser.NUM_OPCODES); i++ {
 		if IsSameStringIgnoreCase(opcodestr, parser.OpNames[i]) {
@@ -1006,6 +1010,8 @@ func (assembler *Assembler) parseCode(line string, lineLen int) (bool, string) {
 			break
 		}
 	}
+
+
 	var ins Instruction
 	var extended int
 	useExtended := false
@@ -1049,7 +1055,7 @@ func (assembler *Assembler) parseCode(line string, lineLen int) (bool, string) {
 		}
 	}
 	remainingLine = Trim(remainingLine)
-	if len(remainingLine) > 0 {
+	if len(remainingLine) > 0 && remainingLine[0]!=';'{
 		return false, "too many operands in instruction " + line
 	}
 	assembler.instructions = append(assembler.instructions, ins)
