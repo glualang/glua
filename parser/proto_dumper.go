@@ -69,16 +69,13 @@ func (p *Prototype) ToFuncAsm(outStream utils.ByteStream, isTop bool) (err error
 	outStream.WriteString(".end_local\r\n")
 
 	//pre parse location  ----------------------------------------
-	err = p.preParseLabelLocations()
-	if err != nil {
-		return
+	if(len(p.extra.labelLocations)==0){
+		err = p.preParseLabelLocations()
+		if err != nil {
+			return
+		}
 	}
 
-	//metering
-	err = p.meteringProto()
-	if err != nil{
-		return err
-	}
 	locationinfos := p.extra.labelLocations // Line -> label mapping
 
 	//write code  ---------------------------------------------
@@ -197,12 +194,19 @@ func (p *Prototype)meteringProto() (err error) {
 	//segment := []
 	segments := []*InsSegment{}
 	segment := newSegment()
-
+	err = p.preParseLabelLocations()
+	if err!=nil{
+		return
+	}
 	locationinfos := p.extra.labelLocations //  code index => label
 	future_seg_idx := -1
 	//locations_idxs := []int{}
 	for i := 0; i < len(p.code); i++ {
 		ins := p.code[i]
+		if(i==0 && ins.opCode()==opMeter){
+			print("already meter proto\n")
+			return
+		}
 		if(segment.isTest) && ins.opCode()==opJump{ //is branch
 			//add to seg
 			segment.instructions = append(segment.instructions,ins)
@@ -376,135 +380,27 @@ func (p *Prototype)meteringProto() (err error) {
 		return errors.New("location err")
 	}
 	p.extra.labelLocations = new_locations_map
-
-
-
 	return nil
 }
 
 
-
-// 把
-func (p *Prototype)meteringProto2() (err error) {
-	//segments:= assembler.Instruction()[]
-	//segment := []
-	segments := [][]instruction{}
-	segment := []instruction{}
-	locationinfos := p.extra.labelLocations // Line -> label mapping
-	future_seg_idx := -1
-	locations_idxs := []int{}
-	for i := 0; i < len(p.code); i++ {
-		if _, ok := locationinfos[i]; ok {
-			locations_idxs = append(locations_idxs,i)
-			//add segments ， 再清空seg
-			if(len(segment)>0){
-				segments = append(segments,segment)
-				segment = []instruction{}
-			}
-		}
-
-		ins := p.code[i]
-		//add to seg
-		segment = append(segment,ins)
-
-		//check branch
-		is_branch := false
-		if(i == future_seg_idx){
-			is_branch = true
-		} else{
-			ins_op := ins.opCode()
-			for j:=0;j<len(branch_ops);j++{
-				if ins_op == branch_ops[j]{
-					//add segments
-					is_branch = true
-					if(ins_op==opTest || ins_op==opTestSet || ins_op==opEqual || ins_op==opLessThan || ins_op==opLessOrEqual){ //op PC++
-						future_seg_idx = i+2
-					}
-					break
-				}
-			}
-		}
-
-		if(is_branch){
-			//add segments ， 再清空seg
-			if(len(segment)>0){
-				segments = append(segments,segment)
-				segment = []instruction{}
+// 把prototype转成lua asm的字符串格式
+func (p *Prototype) AddMeter(isRecurse bool) (err error) {
+	err = p.meteringProto()
+	if err != nil {
+		return
+	}
+	if(isRecurse){
+		//write subprotos   -----------------------------------------
+		for i := 0; i < len(p.prototypes); i++ {
+			err = p.prototypes[i].meteringProto()
+			if err != nil {
+				return
 			}
 		}
 	}
-	if(len(segment)>0){
-		segments = append(segments,segment)
-		segment = []instruction{}
-	}
-
-	orginal_ins_pos := 0
-	insert_poss := []int{}
-	newlineInfo := []int32{}
-	if len(p.lineInfo) > 0 {
-		if len(p.lineInfo) != len(p.code){
-			return errors.New("!! len(p.lineInfo) != len(p.code)")
-		}
-		newlineInfo = make([]int32,len(p.lineInfo)+len(segments))
-	}
-
-	newpcode := make([]instruction,len(p.code)+len(segments))
-
-	//insert_ins_num := 1
-	var startidx(int) = 0
-	for i := 0; i < len(segments); i++ {
-		segment := segments[i]
-		insert_poss = append(insert_poss,orginal_ins_pos)
-		orginal_ins_pos = orginal_ins_pos + len(segment)
-
-		//insert meter code at begin of segment ???
-		gasSum := len(segment) + 1 // add self op gas
-		meterIns := createAx(opMeter,gasSum)
-		newpcode[startidx] = meterIns
-		//add lineinfo
-		if len(p.lineInfo) > 0 {
-			newlineInfo[startidx] = 0 //insert meter op line number 0
-		}
-		startidx++
-		for j:=0;j<len(segment);j++{
-			newpcode[startidx] = segment[j]
-
-			if len(p.lineInfo) > 0 {
-				newlineInfo[startidx] = p.lineInfo[j]
-			}
-			startidx++
-		}
-	}
-
-
-	//adjust locations
-	new_locations_map := map[int]string{}
-	insert_num := 0
-	//new_locations_idxs := []int{}
-	for i := 0; i < len(locations_idxs); i++ {
-		lpos := locations_idxs[i]
-		/*newp := p
-		for j:= 0;j<len(insert_poss);j++{
-			if(insert_poss[j]<= p){
-				newp = newp + 1
-			}else{
-				break
-			}
-		}
-		*/
-		if(insert_num < len(insert_poss) && insert_poss[insert_num] <= lpos){
-			insert_num++
-		}
-
-		newp := lpos + insert_num
-		new_locations_map[newp]=locationinfos[lpos]
-		//new_locations_idxs = append(new_locations_idxs,newp)
-	}
-
-	p.extra.labelLocations = new_locations_map
-	p.lineInfo = newlineInfo[:]
-	p.code = newpcode[:]
-
 	return nil
 }
+
+
 

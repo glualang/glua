@@ -23,6 +23,8 @@ var packageFlag = flag.Bool("package", false, "package bytecode with code info t
 
 var metaInfoFlag = flag.String("meta", "", "meta info json file path if you want package")
 
+var meterFlag = flag.Bool("meter", false, "add meter op")
+
 type commandType int
 
 const (
@@ -64,6 +66,7 @@ func programMain() (err error) {
 	vmType := *vmTypeFlag
 	packageToSingleFile := *packageFlag
 	metaInfoFilePath := *metaInfoFlag
+	isMeter := *meterFlag
 
 	otherArgs := flag.Args()
 
@@ -116,6 +119,12 @@ func programMain() (err error) {
 		if openFileErr != nil {
 			err = openFileErr
 			return
+		}
+		if(isMeter){
+			err = proto.AddMeter(true)
+			if err != nil {
+				return
+			}
 		}
 		defer dumpProtoF.Close()
 		asmOutStream := utils.NewSimpleByteStream()
