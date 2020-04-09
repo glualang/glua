@@ -183,6 +183,10 @@ func isBranchOp(ins instruction)(bool){
 //计算gas 目前每条指令1gas
 func caculateGas(segment *InsSegment)(int){
 	insGasSum := len(segment.instructions)
+	if(segment.instructions[insGasSum-1].opCode()==opTForLoop){//UOP_TFORCALL指令后面总是紧随着UOP_TFORLOOP，uvm运行时只计算一次指令gas
+		insGasSum = insGasSum - 1
+		return insGasSum
+	}
 	if(segment.isTest){ //test op随后必然跟随jmp指令,uvm运行时只计算一次指令gas
 		insGasSum = len(segment.instructions) - 1
 	}
@@ -251,6 +255,8 @@ func (p *Prototype)meteringProto() (err error) {
 			if(ins_op==opTest || ins_op==opTestSet || ins_op==opEqual || ins_op==opLessThan || ins_op==opLessOrEqual ){ //op PC++
 				segment.isTest = true
 				future_seg_idx = i+2
+			}else if (ins_op == opLoadBool && ins.c()!=0) {
+				future_seg_idx = i + 2
 			}else if(len(segment.instructions)>0){ //is branch , add segments ， 再清空seg
 				segment.endOp = segment.instructions[len(segment.instructions)-1].opCode()
 				segments = append(segments,segment)
