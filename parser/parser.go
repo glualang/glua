@@ -258,6 +258,7 @@ func (p *parser) addTypeTagWhenExprIsRecordConstructCallType(e *exprDesc, primar
 	}
 	_ = primarySymbolType
 	if primarySymbolType.ItemType == simpleRecordType {
+		// TODO: 如果是有泛型类型参数，则需要实例化新类型
 		e.exprGuessType = primarySymbolType
 	}
 }

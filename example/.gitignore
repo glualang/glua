@@ -3,3 +3,4 @@
 *.lua.out
 *.lua.gpc
 *.gpc
+*.gen.meta.json

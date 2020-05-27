@@ -15,7 +15,7 @@ import (
 	"os"
 )
 
-var targetTypeFlag = flag.String("target", "asm", "target type(asm or binary)")
+var targetTypeFlag = flag.String("target", "asm", "target type(asm or binary or meta)")
 
 var vmTypeFlag = flag.String("vm", "lua53", "target bytecode type(lua53 or glua)")
 
@@ -201,6 +201,34 @@ func programMain() (err error) {
 			}
 		}
 
+	} else if targetType == "meta" {
+		// generate contract meta info file
+		var dumpCodeInfo *packager.CodeInfo
+		dumpCodeInfo, err = packager.DumpCodeInfoFromTypeChecker(typeChecker)
+		if err != nil {
+			return
+		}
+		var dumpCodeInfoBytes []byte
+		dumpCodeInfoBytes, err = json.Marshal(dumpCodeInfo)
+		if err != nil {
+			return
+		}
+		codeInfoFilePath := filename + ".gen.meta.json"
+		err = createFileIfNotExists(codeInfoFilePath)
+		if err != nil {
+			return
+		}
+
+		dumpCodeInfoF, openFileErr := os.OpenFile(codeInfoFilePath, createReadWriteFileMode, writeFilePerMode)
+		if openFileErr != nil {
+			err = openFileErr
+			return
+		}
+		defer dumpCodeInfoF.Close()
+		_, err = dumpCodeInfoF.Write(dumpCodeInfoBytes)
+		if err != nil {
+			return
+		}
 	} else {
 		panic("not supported target type " + targetType)
 	}

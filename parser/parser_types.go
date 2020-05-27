@@ -79,6 +79,14 @@ type TypeTreeItem struct {
 	FuncReturnType *TypeTreeItem        `json:"FuncReturnType,omitempty"`
 }
 
+func (item *TypeTreeItem) IsRecordType() bool {
+	return item.ItemType == simpleRecordType
+}
+
+func (item *TypeTreeItem) IsFuncType() bool {
+	return item.ItemType == simpleFuncType
+}
+
 func (item *TypeTreeItem) String() string {
 	switch item.ItemType {
 	case simpleNameType:
