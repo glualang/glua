@@ -29,7 +29,50 @@ func DumpCodeInfoFromTypeChecker(checker *parser.TypeChecker) (info *CodeInfo, e
 	}
 	events := checker.Events
 
-	// TODO: find Storage type
+	storagePropertiesTypes := make([][]interface{}, 0)
+	// find Storage type
+	storageType, ok := recordTypeInfo.FindProp("storage")
+	if !ok {
+		return
+	}
+	if !storageType.IsRecordType() {
+		return
+	}
+	for _, p := range storageType.RecordType.Props {
+		// 把propType转换成codeInfo中的typeInt
+		propTypeInt := LTI_NIL
+		// TODO: p.propType要在binding中进行apply
+		if !p.PropType.IsInnerType() && !p.PropType.IsSimpleNameType() {
+			continue
+		}
+		innerTypeName := p.PropType.Name
+		switch innerTypeName {
+		case "bool":
+			{
+				propTypeInt = LTI_BOOL
+			}
+		case "int":
+			{
+				propTypeInt = LTI_INT
+			}
+		case "number":
+			{
+				propTypeInt = LTI_NUMBER
+			}
+		case "string":
+			{
+				propTypeInt = LTI_STRING
+			}
+		// TODO: Array<baseType>, Map<baseType> 类型
+		default:
+			continue
+		}
+		if propTypeInt == LTI_NIL {
+			continue
+		}
+		item := []interface{}{p.PropName, propTypeInt}
+		storagePropertiesTypes = append(storagePropertiesTypes, item)
+	}
 
 	//  set arg type. 并且init，on_deposit, on_deposit_asset, on_upgrade, on_destroy等特殊方法的参数需要特殊处理，其他的参数是字符串的类型
 	apiArgsTypes := make([][]interface{}, 0)
@@ -52,7 +95,7 @@ func DumpCodeInfoFromTypeChecker(checker *parser.TypeChecker) (info *CodeInfo, e
 		Apis:                   apis,
 		OfflineApis:            offlineApis,
 		Events:                 events,
-		StoragePropertiesTypes: make([][]interface{}, 0),
+		StoragePropertiesTypes: storagePropertiesTypes,
 		ApiArgsTypes:           apiArgsTypes,
 	}
 	return

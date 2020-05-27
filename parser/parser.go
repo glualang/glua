@@ -251,15 +251,31 @@ func (p *parser) checkGenericTypeParams() (result []*TypeTreeItem, err error) {
 }
 
 // 如果是调用record类型的构造函数，e需要标记record类型(e在类型推导时得到此record类型)
-func (p *parser) addTypeTagWhenExprIsRecordConstructCallType(e *exprDesc, primarySymbol string) {
+func (p *parser) addTypeTagWhenExprIsRecordConstructCallType(e *exprDesc, primarySymbol string, genericTypes []*TypeTreeItem) {
 	primarySymbolType, _,  _, ok := p.typeChecker.CurrentProtoScope.get(primarySymbol)
 	if !ok {
 		return
 	}
 	_ = primarySymbolType
-	if primarySymbolType.ItemType == simpleRecordType {
-		// TODO: 如果是有泛型类型参数，则需要实例化新类型
-		e.exprGuessType = primarySymbolType
+	if primarySymbolType.IsRecordType() {
+		// 如果是有泛型类型参数，则需要实例化新类型
+		derivedGenericTypes := make([]*TypeTreeItem, 0)
+		for _, item := range genericTypes {
+			if item.ItemType == simpleNameType {
+				var ok bool
+				var itemType *TypeTreeItem
+				itemType, _, _, ok = p.typeChecker.CurrentProtoScope.get(item.Name)
+				if ok {
+					item = itemType
+				}
+			}
+			derivedGenericTypes = append(derivedGenericTypes, item)
+		}
+		recordType, err := primarySymbolType.ApplyRecordGenericTypeParams(derivedGenericTypes)
+		if err != nil {
+			return
+		}
+		e.exprGuessType = recordType
 	}
 }
 
@@ -280,7 +296,7 @@ func (p *parser) suffixedExpression() exprDesc {
 			e = p.functionArguments(p.function.Self(e, p.checkNameAsExpression()), line)
 		case '(', tkString, '{':
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
-			p.addTypeTagWhenExprIsRecordConstructCallType(&e, primaryESymbol)
+			p.addTypeTagWhenExprIsRecordConstructCallType(&e, primaryESymbol, nil)
 		case '<':
 			// 保存scanner状态，向前尝试checkGenericTypeParams，失败则回溯并当成小于号 < 处理
 			scannerSnapshot := p.scanner
@@ -296,10 +312,9 @@ func (p *parser) suffixedExpression() exprDesc {
 				}
 				return e
 			}
-			_ = typeParams
 			// 因为是编译期泛型，调用带泛型参数的类型的构造函数可以忽略泛型参数
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
-			p.addTypeTagWhenExprIsRecordConstructCallType(&e, primaryESymbol)
+			p.addTypeTagWhenExprIsRecordConstructCallType(&e, primaryESymbol, typeParams)
 		default:
 			return e
 		}
