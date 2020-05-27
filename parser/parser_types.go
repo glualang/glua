@@ -25,6 +25,7 @@ const (
 type RecordTypePropInfo struct {
 	PropName string
 	PropType *TypeTreeItem
+	Offline bool
 }
 
 type RecordTypeInfo struct {
@@ -43,16 +44,18 @@ func (r *RecordTypeInfo) FindProp(propName string) (result *TypeTreeItem, ok boo
 	return
 }
 
-func (r *RecordTypeInfo) AddProp(propName string, propType *TypeTreeItem) {
+func (r *RecordTypeInfo) AddProp(propName string, propType *TypeTreeItem, offline bool) {
 	for _, p := range r.Props {
 		if p.PropName==propName {
 			p.PropType = propType
+			p.Offline = offline
 			return
 		}
 	}
 	r.Props = append(r.Props, &RecordTypePropInfo{
 		PropName: propName,
 		PropType: propType,
+		Offline: offline,
 	})
 }
 
@@ -140,6 +143,7 @@ func (item *TypeTreeItem) ApplyRecordGenericTypeParams(genericTypeParams []*Type
 			result.RecordType.Props[i] = &RecordTypePropInfo{
 				PropName:p.PropName,
 				PropType:newPType,
+				Offline: p.Offline,
 			}
 		}
 	}

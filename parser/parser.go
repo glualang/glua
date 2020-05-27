@@ -551,12 +551,12 @@ func (p *parser) assignment(t *assignmentTarget, variableCount int) {
 			saveAssignConstraint(e, capturedExprList)
 		} else {
 			capturedExprList = p.StopCaptureExprList()
-			p.function.StoreVariable(t.exprDesc, p.function.SetReturn(e))
+			p.function.StoreVariable(t.exprDesc, p.function.SetReturn(e), false)
 			saveAssignConstraint(e, capturedExprList)
 			return // avoid default
 		}
 	}
-	p.function.StoreVariable(t.exprDesc, makeExpression(kindNonRelocatable, p.function.freeRegisterCount-1))
+	p.function.StoreVariable(t.exprDesc, makeExpression(kindNonRelocatable, p.function.freeRegisterCount-1), false)
 }
 
 func (p *parser) forBody(base, line, n int, isNumeric bool) {
@@ -834,7 +834,7 @@ func (p *parser) functionName() (e exprDesc, isMethod bool) {
 
 func (p *parser) offlineFunctionStatement(line int) {
 	p.checkNext(tkOffline)
-	p.functionStatement(line)
+	p.functionStatement(line, true)
 	p.function.offline = true
 }
 
@@ -866,10 +866,10 @@ func (p *parser) emitStatement(line int) {
 	p.typeChecker.AddEventName(eventName)
 }
 
-func (p *parser) functionStatement(line int) {
+func (p *parser) functionStatement(line int, offline bool) {
 	p.next()
 	v, m := p.functionName()
-	p.function.StoreVariable(v, p.body(m, line))
+	p.function.StoreVariable(v, p.body(m, line), offline)
 	p.function.FixLine(line)
 }
 
@@ -1030,7 +1030,7 @@ func (p *parser) statement() {
 	case tkRepeat:
 		p.repeatStatement(line)
 	case tkFunction:
-		p.functionStatement(line)
+		p.functionStatement(line, false)
 	case tkOffline:
 		p.offlineFunctionStatement(line)
 	case tkEmit:
@@ -1137,7 +1137,7 @@ func (p *parser) statement() {
 
 			// 创建新的构造函数，并把新创建的构造函数赋值给上面的新局部变量
 			typeNameExp := p.function.SingleVariable(typeNameToken)
-			p.function.StoreVariable(typeNameExp, p.genRecordFunc(recordInfo, line)) // 手动构造函数body
+			p.function.StoreVariable(typeNameExp, p.genRecordFunc(recordInfo, line), false) // 手动构造函数body
 			p.function.FixLine(line)
 		} else {
 			// 可能是 Name {‘<’ { Name [‘,’ Name ] } ‘>’}
@@ -1164,7 +1164,7 @@ func (p *parser) statement() {
 				p.function.AdjustLocalVariables(1)
 
 				typeNameExp := p.function.SingleVariable(typeNameToken)
-				p.function.StoreVariable(typeNameExp, p.genAnnoyRecordFunc(typeNameToken, line)) // 手动构造函数body
+				p.function.StoreVariable(typeNameExp, p.genAnnoyRecordFunc(typeNameToken, line), false) // 手动构造函数body
 				p.function.FixLine(line)
 			}
 		}

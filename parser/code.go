@@ -841,7 +841,7 @@ func (f *function) expressionToRegisterOrConstant(e exprDesc) (exprDesc, int) {
 }
 
 // 给变量分配新值的语句的指令生成
-func (f *function) StoreVariable(v, e exprDesc) {
+func (f *function) StoreVariable(v, e exprDesc, offline bool) {
 	switch v.kind {
 	case kindLocal:
 		f.freeExpression(e)
@@ -857,7 +857,7 @@ func (f *function) StoreVariable(v, e exprDesc) {
 			f.EncodeABC(opSetTable, v.table, v.index, r)
 			// 如果v是a:b这种表达式，在局部变量作用域中找a，如果是record类型，增加新属性
 			if len(v.symbol) > 0 && len(v.fieldName) > 0 {
-				f.p.typeChecker.AddMethodToLocalRecord(v.symbol, v.fieldName, e)
+				f.p.typeChecker.AddMethodToLocalRecord(v.symbol, v.fieldName, e, offline)
 			}
 		} else {
 			f.EncodeABC(opSetTableUp, v.table, v.index, r)

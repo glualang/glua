@@ -23,8 +23,11 @@ func DumpCodeInfoFromTypeChecker(checker *parser.TypeChecker) (info *CodeInfo, e
 		if prop.PropType.IsFuncType() {
 			propName := prop.PropName
 			apis = append(apis, propName)
-			allApis = append(apis, propName)
-			// TODO: 如果是offline的方法属性，则也要加入offlineApis
+			allApis = append(allApis, propName)
+			// 如果是offline的方法属性，则也要加入offlineApis
+			if prop.Offline {
+				offlineApis = append(offlineApis, propName)
+			}
 		}
 	}
 	events := checker.Events
@@ -89,6 +92,7 @@ func DumpCodeInfoFromTypeChecker(checker *parser.TypeChecker) (info *CodeInfo, e
 			apiArgsTypes = append(apiArgsTypes, []interface{}{api, []interface{}{LTI_STRING, LTI_INT}})
 			continue
 		}
+		apiArgsTypes = append(apiArgsTypes, []interface{}{api, []interface{}{LTI_STRING}})
 	}
 
 	info = &CodeInfo{
