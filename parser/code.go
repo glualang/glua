@@ -95,6 +95,8 @@ type exprDesc struct {
 	intValue  int64
 
 	symbol string // 当是单符号变量时用这个
+	fieldName string // 当是a.b或者a:b时的b是这个fieldName
+	exprGuessType *TypeTreeItem // 此表达式推导时被标注的可能的编译器类型
 }
 
 func (e *exprDesc) isZero() bool {
@@ -614,6 +616,15 @@ func (f *function) addConstant(k, v value) int {
 	return index
 }
 
+func (f *function) findConstant(info int) (result value, ok bool) {
+	if info < 0 || info >= len(f.f.constants) {
+		return
+	}
+	result = f.f.constants[info]
+	ok = true
+	return
+}
+
 func (f *function) IntConstant(i int64) int {
 	return f.addConstant(i, i)
 }
@@ -844,6 +855,10 @@ func (f *function) StoreVariable(v, e exprDesc) {
 		e, r = f.expressionToRegisterOrConstant(e)
 		if v.tableType == kindLocal {
 			f.EncodeABC(opSetTable, v.table, v.index, r)
+			// 如果v是a:b这种表达式，在局部变量作用域中找a，如果是record类型，增加新属性
+			if len(v.symbol) > 0 && len(v.fieldName) > 0 {
+				f.p.typeChecker.AddMethodToLocalRecord(v.symbol, v.fieldName, e)
+			}
 		} else {
 			f.EncodeABC(opSetTableUp, v.table, v.index, r)
 		}

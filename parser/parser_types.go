@@ -31,6 +31,19 @@ type RecordTypeInfo struct {
 	Props []*RecordTypePropInfo
 }
 
+func (r *RecordTypeInfo) AddProp(propName string, propType *TypeTreeItem) {
+	for _, p := range r.Props {
+		if p.PropName==propName {
+			p.PropType = propType
+			return
+		}
+	}
+	r.Props = append(r.Props, &RecordTypePropInfo{
+		PropName: propName,
+		PropType: propType,
+	})
+}
+
 func (info *RecordTypeInfo) String() string {
 	var propsStrs []string
 	for _, prop := range info.Props {

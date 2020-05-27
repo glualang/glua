@@ -53,7 +53,7 @@ func (scope *TypeInfoScope) add(name string, item *TypeTreeItem, line int, varTy
 	scope.VariableTypeInfos[name] = item
 	scope.NameLines[name] = line
 	scope.NameDeclareTypes[name] = varType
-	scope.VariableTypeInfos[name] = nilTypeTreeItem
+	scope.VariableTypeInfos[name] = item
 }
 
 func (scope *TypeInfoScope) get(name string) (result *TypeTreeItem, line int, varType VariableType, ok bool) {

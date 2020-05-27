@@ -20,6 +20,10 @@ func (checker *TypeChecker) deriveExprType(e exprDesc) (result *TypeTreeItem) {
 	case kindNumber:
 		return numberTypeTreeItem
 	case kindCall:
+		// 如果是调用的record类型的构造函数，类型是此record类型
+		if e.exprGuessType != nil {
+			return e.exprGuessType
+		}
 		return notDerivedTypeTreeItem // TODO
 	case kindLocal:
 		if len(e.symbol) < 1 {

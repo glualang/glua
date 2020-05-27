@@ -80,6 +80,17 @@ func (checker *TypeChecker) AddAssignConstraint(name string, valueTypeInfo *Type
 	})
 }
 
+// 给局部变量指向的record类型增加新的成员函数
+func (checker *TypeChecker) AddMethodToLocalRecord(name string, methodName string, methodExpr exprDesc) {
+	localVarValue, ok := checker.CurrentProtoScope.VariableTypeInfos[name]
+	if !ok {
+		return
+	}
+	if localVarValue.ItemType == simpleRecordType {
+		localVarValue.RecordType.AddProp(methodName, &TypeTreeItem{ItemType: simpleFuncType})
+	}
+}
+
 func (checker *TypeChecker) SetVariableType(name string, valueTypeInfo *TypeTreeItem) {
 	checker.CurrentProtoScope.VariableTypeInfos[name] = valueTypeInfo
 }

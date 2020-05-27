@@ -250,10 +250,23 @@ func (p *parser) checkGenericTypeParams() (result []*TypeTreeItem, err error) {
 	return
 }
 
+// 如果是调用record类型的构造函数，e需要标记record类型(e在类型推导时得到此record类型)
+func (p *parser) addTypeTagWhenExprIsRecordConstructCallType(e *exprDesc, primarySymbol string) {
+	primarySymbolType, _,  _, ok := p.typeChecker.CurrentProtoScope.get(primarySymbol)
+	if !ok {
+		return
+	}
+	_ = primarySymbolType
+	if primarySymbolType.ItemType == simpleRecordType {
+		e.exprGuessType = primarySymbolType
+	}
+}
+
 // 可能有后缀的表达式的解析
 func (p *parser) suffixedExpression() exprDesc {
 	line := p.lineNumber
 	e := p.primaryExpression()
+	primaryESymbol := e.symbol
 	for {
 		switch p.t {
 		case '.':
@@ -266,6 +279,7 @@ func (p *parser) suffixedExpression() exprDesc {
 			e = p.functionArguments(p.function.Self(e, p.checkNameAsExpression()), line)
 		case '(', tkString, '{':
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
+			p.addTypeTagWhenExprIsRecordConstructCallType(&e, primaryESymbol)
 		case '<':
 			// 保存scanner状态，向前尝试checkGenericTypeParams，失败则回溯并当成小于号 < 处理
 			scannerSnapshot := p.scanner
@@ -284,6 +298,7 @@ func (p *parser) suffixedExpression() exprDesc {
 			_ = typeParams
 			// 因为是编译期泛型，调用带泛型参数的类型的构造函数可以忽略泛型参数
 			e = p.functionArguments(p.function.ExpressionToNextRegister(e), line)
+			p.addTypeTagWhenExprIsRecordConstructCallType(&e, primaryESymbol)
 		default:
 			return e
 		}
@@ -454,9 +469,23 @@ func (p *parser) statementList() {
 }
 
 func (p *parser) fieldSelector(e exprDesc) exprDesc {
+	eSymbol := e.symbol
 	e = p.function.ExpressionToAnyRegisterOrUpValue(e)
+	e.symbol = eSymbol
 	p.next() // skip dot or colon
-	return p.function.Indexed(e, p.checkNameAsExpression())
+	fieldExpr := p.checkNameAsExpression()
+	if fieldExpr.kind == kindConstant {
+		if fieldConstantValue, ok := p.function.findConstant(fieldExpr.info); ok {
+			fieldName := fieldConstantValue.(string)
+			e.fieldName = fieldName
+		}
+	}
+	resultExpr := p.function.Indexed(e, fieldExpr)
+	if len(e.symbol) > 0 && len(e.fieldName)>0 {
+		resultExpr.symbol = e.symbol
+		resultExpr.fieldName = e.fieldName
+	}
+	return resultExpr
 }
 
 func (p *parser) index() exprDesc {
