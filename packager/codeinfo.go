@@ -22,12 +22,37 @@ const (
 	LTI_UNDEFINED     = 100 // ，undefined
 )
 
+type StorageValueType int
+
+const (
+	SVT_NIL    = 0
+	SVT_INT    = 1
+	SVT_NUMBER = 2
+	SVT_BOOL   = 3
+	SVT_STRING = 4
+	SVT_STREAM = 5
+
+	SVT_UNKNOWN_TABLE = 50
+	SVT_INT_TABLE     = 51
+	SVT_NUMBER_TABLE  = 52
+	SVT_BOOL_TABLE    = 53
+	SVT_STRING_TABLE  = 54
+	SVT_STREAM_TABLE  = 55
+
+	SVT_UNKNOWN_ARRAY = 100
+	SVT_INT_ARRAY     = 101
+	SVT_NUMBER_ARRAY  = 102
+	SVT_BOOL_ARRAY    = 103
+	SVT_STRING_ARRAY  = 104
+	SVT_STREAM_ARRAY  = 105
+)
+
 type CodeInfo struct {
 	Apis                   []string        `json:"api"`
 	OfflineApis            []string        `json:"offline_api"`
 	Events                 []string        `json:"event"`
 	StoragePropertiesTypes [][]interface{} `json:"storage_properties_types"` // list of [storageName, storageTypeInt] pairs
-	ApiArgsTypes [][]interface{} `json:"api_args_types"` // list of [apiName, [list of apiArgumentTypes]] pairs
+	ApiArgsTypes           [][]interface{} `json:"api_args_types"`           // list of [apiName, [list of apiArgumentTypes]] pairs
 }
 
 func (info CodeInfo) IsOfflineApi(apiName string) bool {

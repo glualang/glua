@@ -17,7 +17,7 @@ const (
 	simpleAliasType                                    // 类型重命名或者带泛型参数的类型重命名
 	simpleFuncType                                     // 函数类型
 	simpleInnerType                                    // 内置类型，比如int, string, table, Array, Map等
-	simpleNilType									   // nil类型
+	simpleNilType                                      // nil类型
 
 	simpleNotDerivedType // 暂未推导出的类型
 )
@@ -25,7 +25,7 @@ const (
 type RecordTypePropInfo struct {
 	PropName string
 	PropType *TypeTreeItem
-	Offline bool
+	Offline  bool
 }
 
 type RecordTypeInfo struct {
@@ -46,7 +46,7 @@ func (r *RecordTypeInfo) FindProp(propName string) (result *TypeTreeItem, ok boo
 
 func (r *RecordTypeInfo) AddProp(propName string, propType *TypeTreeItem, offline bool) {
 	for _, p := range r.Props {
-		if p.PropName==propName {
+		if p.PropName == propName {
 			p.PropType = propType
 			p.Offline = offline
 			return
@@ -55,7 +55,7 @@ func (r *RecordTypeInfo) AddProp(propName string, propType *TypeTreeItem, offlin
 	r.Props = append(r.Props, &RecordTypePropInfo{
 		PropName: propName,
 		PropType: propType,
-		Offline: offline,
+		Offline:  offline,
 	})
 }
 
@@ -85,8 +85,8 @@ type TypeTreeItem struct {
 	ItemType          typeItemType
 	Name              string
 	GenericTypeParams []*TypeTreeItem `json:"GenericTypeParams,omitempty"`
-	AliasTypeName     string   `json:"AliasTypeName,omitempty"`
-	AliasTypeParams   []string `json:"AliasTypeParams,omitempty"`
+	AliasTypeName     string          `json:"AliasTypeName,omitempty"`
+	AliasTypeParams   []string        `json:"AliasTypeParams,omitempty"`
 
 	RecordType *RecordTypeInfo `json:"RecordType,omitempty"`
 
@@ -97,10 +97,11 @@ type TypeTreeItem struct {
 // 某个TypeTreeItem在某个name-type binding(链表，多层)下apply得到实际类型的函数
 func (item *TypeTreeItem) ApplyBinding(binding *Binding) (result *TypeTreeItem, err error) {
 	switch item.ItemType {
-	case simpleNameType: {
-		result = binding.getOrElse(item.Name, item)
-		return
-	}
+	case simpleNameType:
+		{
+			result = binding.getOrElse(item.Name, item)
+			return
+		}
 
 	}
 	// TODO: 其他itemType类型的处理，需要递归处理成员的类型
@@ -131,7 +132,7 @@ func (item *TypeTreeItem) ApplyRecordGenericTypeParams(genericTypeParams []*Type
 	if len(genericTypeParams) < applyGenericCount {
 		applyGenericCount = len(genericTypeParams)
 	}
-	for i:=0;i<applyGenericCount;i++ {
+	for i := 0; i < applyGenericCount; i++ {
 		name := result.GenericTypeParams[i].Name
 		valueType := genericTypeParams[i]
 		b.bind(name, valueType)
@@ -141,9 +142,9 @@ func (item *TypeTreeItem) ApplyRecordGenericTypeParams(genericTypeParams []*Type
 		if p.PropType.ItemType == simpleNameType && b.get(p.PropType.Name) != nil {
 			newPType := b.get(p.PropType.Name)
 			result.RecordType.Props[i] = &RecordTypePropInfo{
-				PropName:p.PropName,
-				PropType:newPType,
-				Offline: p.Offline,
+				PropName: p.PropName,
+				PropType: newPType,
+				Offline:  p.Offline,
 			}
 		}
 	}
@@ -166,6 +167,10 @@ func (item *TypeTreeItem) IsInnerType() bool {
 
 func (item *TypeTreeItem) IsSimpleNameType() bool {
 	return item.ItemType == simpleNameType
+}
+
+func (item *TypeTreeItem) IsSimpleNameWithGenericTypesType() bool {
+	return item.ItemType == simpleNameWithGenericTypesType
 }
 
 func (item *TypeTreeItem) String() string {

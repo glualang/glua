@@ -43,34 +43,87 @@ func DumpCodeInfoFromTypeChecker(checker *parser.TypeChecker) (info *CodeInfo, e
 	}
 	for _, p := range storageType.RecordType.Props {
 		// 把propType转换成codeInfo中的typeInt
-		propTypeInt := LTI_NIL
+		var propTypeInt StorageValueType = SVT_NIL
 		// TODO: p.propType要在binding中进行apply
-		if !p.PropType.IsInnerType() && !p.PropType.IsSimpleNameType() {
+		if !p.PropType.IsInnerType() && !p.PropType.IsSimpleNameType() && !p.PropType.IsSimpleNameWithGenericTypesType() {
 			continue
 		}
 		innerTypeName := p.PropType.Name
 		switch innerTypeName {
 		case "bool":
 			{
-				propTypeInt = LTI_BOOL
+				propTypeInt = SVT_BOOL
 			}
 		case "int":
 			{
-				propTypeInt = LTI_INT
+				propTypeInt = SVT_INT
 			}
 		case "number":
 			{
-				propTypeInt = LTI_NUMBER
+				propTypeInt = SVT_NUMBER
 			}
 		case "string":
 			{
-				propTypeInt = LTI_STRING
+				propTypeInt = SVT_STRING
 			}
-		// TODO: Array<baseType>, Map<baseType> 类型
+		case "Map":
+			{
+				if len(p.PropType.GenericTypeParams) < 1 {
+					return
+				}
+				mapParamType := p.PropType.GenericTypeParams[0]
+				switch mapParamType.Name {
+				case "bool":
+					{
+						propTypeInt = SVT_BOOL_TABLE
+					}
+				case "int":
+					{
+						propTypeInt = SVT_INT_TABLE
+					}
+				case "number":
+					{
+						propTypeInt = SVT_NUMBER_TABLE
+					}
+				case "string":
+					{
+						propTypeInt = SVT_STRING_TABLE
+					}
+				default:
+					return
+				}
+			}
+		case "Array":
+			{
+				if len(p.PropType.GenericTypeParams) < 1 {
+					return
+				}
+				mapParamType := p.PropType.GenericTypeParams[0]
+				switch mapParamType.Name {
+				case "bool":
+					{
+						propTypeInt = SVT_BOOL_ARRAY
+					}
+				case "int":
+					{
+						propTypeInt = SVT_INT_ARRAY
+					}
+				case "number":
+					{
+						propTypeInt = SVT_NUMBER_ARRAY
+					}
+				case "string":
+					{
+						propTypeInt = SVT_STRING_ARRAY
+					}
+				default:
+					return
+				}
+			}
 		default:
 			continue
 		}
-		if propTypeInt == LTI_NIL {
+		if propTypeInt == SVT_NIL {
 			continue
 		}
 		item := []interface{}{p.PropName, propTypeInt}
